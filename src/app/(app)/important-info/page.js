@@ -256,7 +256,7 @@ export default function ImportantInfoPage() {
       )}
 
       {hasPublishedContent ? (
-        <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-8 shadow-sm">
+        <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-sm sm:p-6 lg:p-8">
           <h2 className="text-xl font-bold text-amber-950">{record.title}</h2>
           <p className="mt-1 text-sm text-amber-800/80">
             Week {record.week_number}, {record.year}

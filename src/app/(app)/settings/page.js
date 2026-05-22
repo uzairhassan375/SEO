@@ -79,7 +79,7 @@ export default function SettingsPage() {
       {tab === "profile" && <ProfileSettingsForm />}
 
       {tab === "team" && isAdmin && (
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="rounded-xl border bg-white p-4 shadow-sm sm:p-6">
           <h2 className="mb-2 text-lg font-semibold text-slate-900">Team users</h2>
           <p className="mb-6 text-sm text-slate-500">
             Assign roles and services. Users can set their own photo and name under My Profile.

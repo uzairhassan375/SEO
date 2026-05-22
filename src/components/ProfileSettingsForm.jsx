@@ -77,7 +77,7 @@ export default function ProfileSettingsForm() {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
       <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
         <div className="relative">
           <UserAvatar profile={profile} size="xl" showRing />

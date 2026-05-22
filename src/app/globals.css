@@ -29,7 +29,7 @@ body {
   header {
     display: none !important;
   }
-  .pl-64 {
+  .app-main-shell {
     padding-left: 0 !important;
   }
 }
@@ -82,4 +82,34 @@ input.input-search {
 
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
+}
+
+/* Mobile-only (desktop lg+ unchanged) */
+@media (max-width: 1023px) {
+  main .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  main .overflow-x-auto > table {
+    min-width: 36rem;
+  }
+
+  main .overflow-x-auto > table.table-fixed {
+    table-layout: auto;
+    min-width: 40rem;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    min-height: 2.75rem;
+  }
+
+  main select,
+  main input:not([type="checkbox"]):not([type="radio"]):not([type="number"]) {
+    font-size: 16px;
+  }
+
+  main input[type="number"] {
+    font-size: 16px;
+  }
 }

@@ -4,12 +4,14 @@ import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import LoadingSpinner from "./LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
+import { MobileNavProvider, useMobileNav } from "@/contexts/MobileNavContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export default function AppLayout({ children }) {
+function AppLayoutShell({ children }) {
   const { loading, user } = useAuth();
   const router = useRouter();
+  const { open, close } = useMobileNav();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -19,9 +21,9 @@ export default function AppLayout({ children }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-4">
         <LoadingSpinner />
-        <p className="text-sm text-slate-500">Loading Zambeel SEO…</p>
+        <p className="text-center text-sm text-slate-500">Loading Zambeel SEO…</p>
       </div>
     );
   }
@@ -30,11 +32,27 @@ export default function AppLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {open && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-900/50 lg:hidden"
+          onClick={close}
+          aria-label="Close menu"
+        />
+      )}
       <Sidebar />
-      <div className="pl-64">
+      <div className="app-main-shell lg:pl-64">
         <Navbar />
-        <main className="p-8">{children}</main>
+        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
+  );
+}
+
+export default function AppLayout({ children }) {
+  return (
+    <MobileNavProvider>
+      <AppLayoutShell>{children}</AppLayoutShell>
+    </MobileNavProvider>
   );
 }

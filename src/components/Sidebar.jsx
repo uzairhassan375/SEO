@@ -15,8 +15,10 @@ import {
   Settings,
   Activity,
   Megaphone,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMobileNav } from "@/contexts/MobileNavContext";
 import UserAvatar from "@/components/UserAvatar";
 import ZambeelLogo from "@/components/ZambeelLogo";
 import { getDisplayName } from "@/lib/utils";
@@ -39,6 +41,7 @@ const nav = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { isAdmin, profile, supabase } = useAuth();
+  const { open, close } = useMobileNav();
   const [hasPublishedPosts, setHasPublishedPosts] = useState(isAdmin);
 
   useEffect(() => {
@@ -82,8 +85,21 @@ export default function Sidebar() {
   });
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-[#1e3a5f] text-white">
-      <div className="border-b border-white/10 px-6 py-6">
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-50 flex h-screen w-64 max-w-[85vw] flex-col bg-[#1e3a5f] text-white transition-transform duration-300 ease-in-out lg:max-w-none lg:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full"
+      )}
+    >
+      <div className="relative border-b border-white/10 px-5 py-5 lg:px-6 lg:py-6">
+        <button
+          type="button"
+          onClick={close}
+          className="absolute right-3 top-3 rounded-lg p-1.5 text-white/80 hover:bg-white/10 lg:hidden"
+          aria-label="Close menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
         <ZambeelLogo size="md" priority />
         <p className="mt-3 text-xs font-medium tracking-wide text-white/60">
           SEO Management Platform
@@ -97,6 +113,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={close}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
                 active
@@ -114,6 +131,7 @@ export default function Sidebar() {
       <div className="border-t border-white/10 p-4">
         <Link
           href="/settings"
+          onClick={close}
           className={cn(
             "flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-white/10",
             pathname === "/settings" && "bg-white/15"
