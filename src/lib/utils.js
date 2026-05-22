@@ -28,6 +28,13 @@ export function formatRank(rank) {
   return String(rank);
 }
 
+/** True when keyword has a real position between 1 and 10 (excludes empty/null/0). */
+export function isTop10Rank(rank) {
+  if (rank == null || rank === "") return false;
+  const n = Number(rank);
+  return Number.isFinite(n) && n >= 1 && n <= 10;
+}
+
 export function formatImpressions(value) {
   if (value === null || value === undefined) return "—";
   const n = Number(value);

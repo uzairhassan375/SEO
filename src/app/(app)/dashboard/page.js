@@ -18,7 +18,7 @@ import { ServiceBadge, StatusBadge } from "@/components/Badge";
 import { useAuth } from "@/contexts/AuthContext";
 import UserAvatar from "@/components/UserAvatar";
 import { SERVICES, SERVICE_LABELS, BLOG_STATUSES } from "@/lib/constants";
-import { timeAgo, getDisplayName, getWeekNumber } from "@/lib/utils";
+import { timeAgo, getDisplayName, getWeekNumber, isTop10Rank } from "@/lib/utils";
 
 const emptyStats = () => ({
   totalKeywords: 0,
@@ -152,7 +152,7 @@ export default function DashboardPage() {
 
       setStats({
         totalKeywords: keywords.length,
-        top10: keywords.filter((k) => k.current_rank && k.current_rank <= 10).length,
+        top10: keywords.filter((k) => isTop10Rank(k.current_rank)).length,
         liveBacklinks: backlinks.filter((b) => b.status === "live").length,
         totalBlogs: blogs.length,
         pendingTasks: tasks.filter((t) => t.status !== "done").length,
@@ -161,7 +161,7 @@ export default function DashboardPage() {
             s,
             {
               keywords: keywords.filter((k) => k.service === s).length,
-              top10: keywords.filter((k) => k.service === s && k.current_rank <= 10).length,
+              top10: keywords.filter((k) => k.service === s && isTop10Rank(k.current_rank)).length,
               live: backlinks.filter((b) => b.service === s && b.status === "live").length,
               blogs: blogs.filter((b) => b.service === s).length,
               pending: tasks.filter((t) => t.service === s && t.status !== "done").length,

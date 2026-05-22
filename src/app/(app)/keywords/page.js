@@ -181,7 +181,6 @@ export default function KeywordsPage() {
   };
 
   const remove = async (row) => {
-    if (!isAdmin) return;
     if (!confirm("Delete this keyword?")) return;
     const supabase = (await import("@/lib/supabase/client")).createClient();
     const { error } = await supabase.from("keywords").delete().eq("id", row.id);
@@ -331,15 +330,14 @@ export default function KeywordsPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => remove(k)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => remove(k)}
+                        className="text-red-500 hover:text-red-700"
+                        title="Delete keyword"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
