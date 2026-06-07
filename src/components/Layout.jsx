@@ -7,11 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { MobileNavProvider, useMobileNav } from "@/contexts/MobileNavContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 function AppLayoutShell({ children }) {
   const { loading, user } = useAuth();
   const router = useRouter();
-  const { open, close } = useMobileNav();
+  const { open, close, collapsed } = useMobileNav();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -41,7 +42,12 @@ function AppLayoutShell({ children }) {
         />
       )}
       <Sidebar />
-      <div className="app-main-shell lg:pl-64">
+      <div
+        className={cn(
+          "app-main-shell transition-[padding] duration-300 ease-in-out",
+          collapsed ? "lg:pl-[4.5rem]" : "lg:pl-64"
+        )}
+      >
         <Navbar />
         <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>

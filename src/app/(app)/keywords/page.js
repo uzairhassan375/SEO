@@ -46,7 +46,7 @@ function WeekCell({ rank, volume }) {
 }
 
 export default function KeywordsPage() {
-  const { profile, isAdmin, user } = useAuth();
+  const { profile, user, isAdmin } = useAuth();
   const { showToast } = useToast();
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
@@ -154,7 +154,6 @@ export default function KeywordsPage() {
       impressions_week2: numOrNull(form.impressions_week2),
       impressions_week3: numOrNull(form.impressions_week3),
       impressions_week4: numOrNull(form.impressions_week4),
-      added_by: user.id,
     };
 
     const supabase = (await import("@/lib/supabase/client")).createClient();
@@ -179,7 +178,7 @@ export default function KeywordsPage() {
     } else {
       const { data, error } = await supabase
         .from("keywords")
-        .insert({ ...payload, priority: "medium" })
+        .insert({ ...payload, priority: "medium", added_by: user.id })
         .select()
         .single();
       if (error) return showToast(error.message, "error");
@@ -196,6 +195,8 @@ export default function KeywordsPage() {
     setModalOpen(false);
     refetch();
   };
+
+  const canManage = (row) => isAdmin || row.added_by === user.id;
 
   const remove = async (row) => {
     if (!confirm("Delete this keyword?")) return;
@@ -350,21 +351,25 @@ export default function KeywordsPage() {
                   <td className="px-4 py-3 font-semibold">{formatRank(k.current_rank)}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(k)}
-                        className="text-slate-500 hover:text-[#1e3a5f]"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => remove(k)}
-                        className="text-red-500 hover:text-red-700"
-                        title="Delete keyword"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {canManage(k) && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(k)}
+                            className="text-slate-500 hover:text-[#1e3a5f]"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => remove(k)}
+                            className="text-red-500 hover:text-red-700"
+                            title="Delete keyword"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

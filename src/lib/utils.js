@@ -65,13 +65,6 @@ export function calcCtr(clicks, impressions, existingCtr) {
   return Math.round((c / i) * 10000) / 100;
 }
 
-export function rankTrend(current, previous) {
-  if (current == null || previous == null) return "neutral";
-  if (current < previous) return "up";
-  if (current > previous) return "down";
-  return "neutral";
-}
-
 export function cn(...classes) {
   return classes.filter(Boolean).join(" ");
 }

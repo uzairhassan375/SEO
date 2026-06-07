@@ -47,7 +47,7 @@ export async function updateSession(request) {
     return NextResponse.redirect(url);
   }
 
-  const adminOnly = ["/monthly-report", "/ceo-report", "/team-activity"];
+  const adminOnly = ["/monthly-report", "/team-activity"];
   if (user && adminOnly.some((p) => path.startsWith(p))) {
     const { data: profile } = await supabase
       .from("profiles")

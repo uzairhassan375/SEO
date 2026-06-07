@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function usePages(serviceFilter, weekFilter, yearFilter) {
-  const { profile, isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -17,8 +17,8 @@ export function usePages(serviceFilter, weekFilter, yearFilter) {
       .select("*")
       .order("clicks", { ascending: false });
 
-    if (!isAdmin && profile?.assigned_service) {
-      query = query.eq("service", profile.assigned_service);
+    if (!isAdmin && user?.id) {
+      query = query.eq("created_by", user.id);
     } else if (serviceFilter && serviceFilter !== "all") {
       query = query.eq("service", serviceFilter);
     }
@@ -32,7 +32,7 @@ export function usePages(serviceFilter, weekFilter, yearFilter) {
     const { data, error } = await query;
     if (!error) setPages(data || []);
     setLoading(false);
-  }, [supabase, isAdmin, profile, serviceFilter, weekFilter, yearFilter]);
+  }, [supabase, isAdmin, user, serviceFilter, weekFilter, yearFilter]);
 
   useEffect(() => {
     fetchPages();

@@ -6,10 +6,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMobileNav } from "@/contexts/MobileNavContext";
 import UserAvatar from "./UserAvatar";
 import { getDisplayName } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export default function Navbar() {
   const { profile, signOut } = useAuth();
-  const { toggle } = useMobileNav();
+  const { toggle, collapsed } = useMobileNav();
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 lg:h-16 lg:gap-0 lg:px-8">
@@ -24,7 +25,10 @@ export default function Navbar() {
         </button>
         <Link
           href="/dashboard"
-          className="truncate text-sm font-bold text-[#1e3a5f] lg:hidden"
+          className={cn(
+            "truncate text-sm font-bold text-[#1e3a5f]",
+            collapsed ? "hidden lg:block" : "lg:hidden"
+          )}
         >
           Zambeel SEO
         </Link>

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useLinks(serviceFilter, typeFilter) {
-  const { profile, isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -13,8 +13,8 @@ export function useLinks(serviceFilter, typeFilter) {
   const fetchLinks = useCallback(async () => {
     setLoading(true);
     let query = supabase.from("backlinks").select("*").order("created_at", { ascending: false });
-    if (!isAdmin && profile?.assigned_service) {
-      query = query.eq("service", profile.assigned_service);
+    if (!isAdmin && user?.id) {
+      query = query.eq("added_by", user.id);
     } else if (serviceFilter && serviceFilter !== "all") {
       query = query.eq("service", serviceFilter);
     }
@@ -23,7 +23,7 @@ export function useLinks(serviceFilter, typeFilter) {
     const { data, error } = await query;
     if (!error) setLinks(data || []);
     setLoading(false);
-  }, [supabase, isAdmin, profile, serviceFilter, typeFilter]);
+  }, [supabase, isAdmin, user, serviceFilter, typeFilter]);
 
   useEffect(() => {
     fetchLinks();

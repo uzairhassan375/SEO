@@ -117,8 +117,8 @@ export default function WeeklyReportPage() {
       .select("*")
       .order("year", { ascending: false })
       .order("week_number", { ascending: false });
-    if (!isAdmin && memberService) {
-      q = q.eq("service", memberService);
+    if (!isAdmin && user?.id) {
+      q = q.eq("created_by", user.id);
     }
     const { data, error } = await q;
     if (error) {
@@ -126,7 +126,7 @@ export default function WeeklyReportPage() {
       return [];
     }
     return data || [];
-  }, [supabase, isAdmin, memberService, showToast]);
+  }, [supabase, isAdmin, user, showToast]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -201,7 +201,8 @@ export default function WeeklyReportPage() {
         (r) =>
           r.week_number === week &&
           r.year === year &&
-          r.service === memberService
+          r.service === memberService &&
+          r.created_by === user?.id
       ) || emptyReport(memberService, week, year)
     );
   }, [reports, week, year, memberService, isAdmin]);
@@ -236,7 +237,6 @@ export default function WeeklyReportPage() {
     guest_posts: Number(r.guest_posts) || 0,
     on_page_fixes: Number(r.on_page_fixes) || 0,
     notes: r.notes || "",
-    created_by: user.id,
   });
 
   const saveReport = async (draft, isNew = false) => {
@@ -250,7 +250,9 @@ export default function WeeklyReportPage() {
         .update(payload)
         .eq("id", draft.id));
     } else {
-      ({ error } = await supabase.from("weekly_reports").insert(payload));
+      ({ error } = await supabase
+        .from("weekly_reports")
+        .insert({ ...payload, created_by: user.id }));
     }
 
     setSaving(false);

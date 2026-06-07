@@ -102,6 +102,12 @@ export default function DashboardPage() {
         blogQ = blogQ.eq("service", serviceFilter);
       }
 
+      if (!isAdmin && user?.id) {
+        kwQ = kwQ.eq("added_by", user.id);
+        blQ = blQ.eq("added_by", user.id);
+        blogQ = blogQ.eq("created_by", user.id);
+      }
+
       if (!isAdmin) {
         tkQ = tkQ.eq("assigned_to", user.id);
       }
@@ -129,6 +135,7 @@ export default function DashboardPage() {
             .from("weekly_reports")
             .select("id")
             .eq("service", profile.assigned_service)
+            .eq("created_by", user.id)
             .eq("week_number", week)
             .eq("year", year)
             .maybeSingle()

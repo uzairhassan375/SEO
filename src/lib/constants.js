@@ -45,9 +45,3 @@ export function isAdminProfile(profile) {
     profile?.role === "admin" || profile?.email === ADMIN_EMAIL
   );
 }
-
-export function canAccessService(profile, service) {
-  if (!profile) return false;
-  if (isAdminProfile(profile)) return true;
-  return profile.assigned_service === service;
-}

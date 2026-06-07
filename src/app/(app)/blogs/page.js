@@ -20,6 +20,7 @@ const emptyForm = {
   title: "",
   target_keyword: "",
   country: "",
+  origin_country: "",
   service: "dropshipping",
   status: "draft",
   url: "",
@@ -33,6 +34,8 @@ export default function BlogsPage() {
   const { showToast } = useToast();
   const [serviceTab, setServiceTab] = useState("all");
   const [statusTab, setStatusTab] = useState("all");
+  const [originFilter, setOriginFilter] = useState("all");
+  const [targetFilter, setTargetFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -47,18 +50,56 @@ export default function BlogsPage() {
 
   const serviceTabs = ["all", ...SERVICES];
 
+  const origins = useMemo(() => {
+    const set = new Set();
+    blogs.forEach((b) => {
+      const c = (b.origin_country || "").trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [blogs]);
+
+  const targets = useMemo(() => {
+    const set = new Set();
+    blogs.forEach((b) => {
+      const c = (b.country || "").trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [blogs]);
+
+  const activeOriginFilter =
+    originFilter !== "all" && origins.includes(originFilter) ? originFilter : "all";
+
+  const activeTargetFilter =
+    targetFilter !== "all" && targets.includes(targetFilter) ? targetFilter : "all";
+
+  const filteredBlogs = useMemo(() => {
+    return blogs.filter((b) => {
+      if (activeOriginFilter !== "all") {
+        const origin = (b.origin_country || "").trim();
+        if (origin !== activeOriginFilter) return false;
+      }
+      if (activeTargetFilter !== "all") {
+        const target = (b.country || "").trim();
+        if (target !== activeTargetFilter) return false;
+      }
+      return true;
+    });
+  }, [blogs, activeOriginFilter, activeTargetFilter]);
+
   const stats = useMemo(() => {
-    const published = blogs.filter((b) =>
+    const published = filteredBlogs.filter((b) =>
       ["published", "live"].includes(b.status)
     ).length;
-    const totalWords = blogs.reduce((s, b) => s + (b.word_count || 0), 0);
+    const totalWords = filteredBlogs.reduce((s, b) => s + (b.word_count || 0), 0);
     const byAuthor = {};
-    blogs.forEach((b) => {
+    filteredBlogs.forEach((b) => {
       const name = getDisplayName(profileMap[b.created_by]) || "Unknown";
       byAuthor[name] = (byAuthor[name] || 0) + 1;
     });
-    return { total: blogs.length, published, totalWords, byAuthor };
-  }, [blogs, profileMap]);
+    return { total: filteredBlogs.length, published, totalWords, byAuthor };
+  }, [filteredBlogs, profileMap]);
 
   const openAdd = () => {
     setEditing(null);
@@ -83,6 +124,7 @@ export default function BlogsPage() {
       title: row.title,
       target_keyword: row.target_keyword || "",
       country: row.country || "",
+      origin_country: row.origin_country || "",
       service: row.service,
       status: row.status,
       url: row.url || "",
@@ -108,6 +150,7 @@ export default function BlogsPage() {
       title: form.title.trim(),
       target_keyword: form.target_keyword.trim(),
       country: form.country.trim(),
+      origin_country: form.origin_country.trim(),
       service: form.service,
       status: form.status,
       url: form.url.trim() || null,
@@ -173,6 +216,7 @@ export default function BlogsPage() {
   };
 
   const quickStatus = async (row, status) => {
+    if (!isAdmin && row.created_by !== user.id) return;
     const { error } = await supabase
       .from("blogs")
       .update({ status, updated_at: new Date().toISOString() })
@@ -201,7 +245,7 @@ export default function BlogsPage() {
           <p className="mt-1 text-sm text-slate-500">
             {isAdmin
               ? "Track who published what, target keywords, and word counts."
-              : "Log blogs you write — pick the service, keyword, country, and status."}
+              : "Log blogs you write — pick the service, keyword, origin/target country, and status."}
           </p>
         </div>
         <button type="button" onClick={openAdd} className="btn-primary flex items-center gap-2">
@@ -246,16 +290,16 @@ export default function BlogsPage() {
 
       <div className="flex flex-wrap gap-4 text-sm">
         <span className="rounded-lg bg-emerald-100 px-3 py-1 font-medium text-emerald-800">
-          {blogs.filter((b) => b.status === "live").length} live
+          {filteredBlogs.filter((b) => b.status === "live").length} live
         </span>
         <span className="rounded-lg bg-amber-100 px-3 py-1 font-medium text-amber-800">
-          {blogs.filter((b) => b.status === "published").length} published
+          {filteredBlogs.filter((b) => b.status === "published").length} published
         </span>
         <span className="rounded-lg bg-blue-100 px-3 py-1 font-medium text-blue-800">
-          {blogs.filter((b) => b.status === "writing").length} writing
+          {filteredBlogs.filter((b) => b.status === "writing").length} writing
         </span>
         <span className="rounded-lg bg-slate-100 px-3 py-1 font-medium text-slate-700">
-          {blogs.filter((b) => b.status === "draft").length} draft
+          {filteredBlogs.filter((b) => b.status === "draft").length} draft
         </span>
       </div>
 
@@ -289,12 +333,61 @@ export default function BlogsPage() {
         ))}
       </div>
 
+      {(origins.length > 0 || targets.length > 0) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {origins.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="blog-origin-filter" className="text-sm font-medium text-slate-600">
+                Origin
+              </label>
+              <select
+                id="blog-origin-filter"
+                value={activeOriginFilter}
+                onChange={(e) => setOriginFilter(e.target.value)}
+                className="min-w-[140px] text-sm"
+              >
+                <option value="all">All origins</option>
+                {origins.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {targets.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="blog-target-filter" className="text-sm font-medium text-slate-600">
+                Target
+              </label>
+              <select
+                id="blog-target-filter"
+                value={activeTargetFilter}
+                onChange={(e) => setTargetFilter(e.target.value)}
+                className="min-w-[140px] text-sm"
+              >
+                <option value="all">All targets</option>
+                {targets.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <LoadingSpinner />
-      ) : blogs.length === 0 ? (
+      ) : filteredBlogs.length === 0 ? (
         <EmptyState
-          title="No blogs yet"
-          message="Add a blog entry with topic, target keyword, and country."
+          title={blogs.length === 0 ? "No blogs yet" : "No matching blogs"}
+          message={
+            blogs.length === 0
+              ? "Add a blog entry with topic, target keyword, and origin/target country."
+              : "Try a different origin or target filter."
+          }
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm table-row-hover">
@@ -303,7 +396,8 @@ export default function BlogsPage() {
               <tr>
                 <th className="px-4 py-3">Topic</th>
                 <th className="px-4 py-3">Keyword</th>
-                <th className="px-4 py-3">Country</th>
+                <th className="px-4 py-3">Origin</th>
+                <th className="px-4 py-3">Target</th>
                 <th className="px-4 py-3">Service</th>
                 {isAdmin && <th className="px-4 py-3">Posted by</th>}
                 <th className="px-4 py-3">Status</th>
@@ -313,10 +407,11 @@ export default function BlogsPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {blogs.map((b) => (
+              {filteredBlogs.map((b) => (
                 <tr key={b.id}>
                   <td className="max-w-[160px] px-4 py-3 font-medium">{b.title}</td>
                   <td className="px-4 py-3">{b.target_keyword || "—"}</td>
+                  <td className="px-4 py-3">{b.origin_country || "—"}</td>
                   <td className="px-4 py-3">{b.country || "—"}</td>
                   <td className="px-4 py-3">
                     <ServiceBadge service={b.service} />
@@ -332,17 +427,21 @@ export default function BlogsPage() {
                     </td>
                   )}
                   <td className="px-4 py-3">
-                    <select
-                      value={b.status}
-                      onChange={(e) => quickStatus(b, e.target.value)}
-                      className="text-sm capitalize"
-                    >
-                      {BLOG_STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
+                    {(isAdmin || b.created_by === user.id) ? (
+                      <select
+                        value={b.status}
+                        onChange={(e) => quickStatus(b, e.target.value)}
+                        className="text-sm capitalize"
+                      >
+                        {BLOG_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <StatusBadge status={b.status} />
+                    )}
                   </td>
                   <td className="px-4 py-3">{b.word_count ?? "—"}</td>
                   <td className="max-w-[120px] truncate px-4 py-3">
@@ -361,9 +460,11 @@ export default function BlogsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => openEdit(b)} title="Edit">
-                        <Pencil className="h-4 w-4 text-slate-500" />
-                      </button>
+                      {(isAdmin || b.created_by === user.id) && (
+                        <button type="button" onClick={() => openEdit(b)} title="Edit">
+                          <Pencil className="h-4 w-4 text-slate-500" />
+                        </button>
+                      )}
                       {(isAdmin || b.created_by === user.id) && (
                         <button type="button" onClick={() => remove(b)} title="Delete">
                           <Trash2 className="h-4 w-4 text-red-500" />
@@ -405,12 +506,21 @@ export default function BlogsPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">Country</label>
+            <label className="mb-1 block text-sm font-medium">Origin country</label>
+            <input
+              value={form.origin_country}
+              onChange={(e) => setForm({ ...form, origin_country: e.target.value })}
+              className="w-full"
+              placeholder="e.g. Pakistan, China"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">Target country</label>
             <input
               value={form.country}
               onChange={(e) => setForm({ ...form, country: e.target.value })}
               className="w-full"
-              placeholder="e.g. UAE, Pakistan"
+              placeholder="e.g. UAE, Saudi Arabia"
             />
           </div>
           <div>

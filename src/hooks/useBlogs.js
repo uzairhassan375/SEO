@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useBlogs(serviceFilter, statusFilter) {
-  const { profile } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [blogs, setBlogs] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +18,9 @@ export function useBlogs(serviceFilter, statusFilter) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (serviceFilter && serviceFilter !== "all") {
+    if (!isAdmin && user?.id) {
+      query = query.eq("created_by", user.id);
+    } else if (serviceFilter && serviceFilter !== "all") {
       query = query.eq("service", serviceFilter);
     }
     if (statusFilter && statusFilter !== "all") {
@@ -33,11 +35,11 @@ export function useBlogs(serviceFilter, statusFilter) {
     setBlogs(blogData || []);
     setProfiles(profData || []);
     setLoading(false);
-  }, [supabase, profile, serviceFilter, statusFilter]);
+  }, [supabase, isAdmin, user, serviceFilter, statusFilter]);
 
   useEffect(() => {
-    if (profile) fetchBlogs();
-  }, [profile, fetchBlogs]);
+    fetchBlogs();
+  }, [fetchBlogs]);
 
   return { blogs, profiles, loading, refetch: fetchBlogs };
 }

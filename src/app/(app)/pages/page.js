@@ -135,9 +135,10 @@ export default function PagesPage() {
     };
 
     if (editing) {
+      const { created_by: _omit, ...updatePayload } = payload;
       const { error } = await supabase
         .from("page_rankings")
-        .update(payload)
+        .update(updatePayload)
         .eq("id", editing.id);
       if (error) return showToast(error.message, "error");
       await logActivity({
@@ -328,20 +329,24 @@ export default function PagesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(p)}
-                        className="text-slate-500 hover:text-[#1e3a5f]"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => remove(p)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {(isAdmin || p.created_by === user.id) && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(p)}
+                            className="text-slate-500 hover:text-[#1e3a5f]"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => remove(p)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

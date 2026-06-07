@@ -69,7 +69,8 @@ export default function LinksPage() {
     };
 
     if (editing) {
-      const { error } = await supabase.from("backlinks").update(payload).eq("id", editing.id);
+      const { added_by: _omit, ...updatePayload } = payload;
+      const { error } = await supabase.from("backlinks").update(updatePayload).eq("id", editing.id);
       if (error) return showToast(error.message, "error");
       await logActivity({
         user: profile,
@@ -203,13 +204,15 @@ export default function LinksPage() {
                   <td className="px-4 py-3">{l.date_added || "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => { setEditing(l); setForm({ ...l, dr_score: l.dr_score ?? "" }); setModalOpen(true); }} className="text-slate-500">
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      {(isAdmin || l.service === profile?.assigned_service) && (
-                        <button type="button" onClick={() => remove(l)} className="text-red-500">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                      {(isAdmin || l.added_by === user.id) && (
+                        <>
+                          <button type="button" onClick={() => { setEditing(l); setForm({ ...l, dr_score: l.dr_score ?? "" }); setModalOpen(true); }} className="text-slate-500">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button type="button" onClick={() => remove(l)} className="text-red-500">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
