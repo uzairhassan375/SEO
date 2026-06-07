@@ -11,7 +11,7 @@ import EmptyState from "@/components/EmptyState";
 import StatCard from "@/components/StatCard";
 import { ServiceBadge, StatusBadge } from "@/components/Badge";
 import UserAvatar from "@/components/UserAvatar";
-import { SERVICES, SERVICE_LABELS, BLOG_STATUSES } from "@/lib/constants";
+import { SERVICES, SERVICE_LABELS, BLOG_STATUSES, isAdminProfile } from "@/lib/constants";
 import { logActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
 import { getDisplayName } from "@/lib/utils";
@@ -45,11 +45,7 @@ export default function BlogsPage() {
     [profiles]
   );
 
-  const serviceTabs = isAdmin
-    ? ["all", ...SERVICES]
-    : profile?.assigned_service
-      ? [profile.assigned_service]
-      : [];
+  const serviceTabs = ["all", ...SERVICES];
 
   const stats = useMemo(() => {
     const published = blogs.filter((b) =>
@@ -68,9 +64,17 @@ export default function BlogsPage() {
     setEditing(null);
     setForm({
       ...emptyForm,
-      service: isAdmin ? "dropshipping" : profile?.assigned_service || "dropshipping",
+      service: profile?.assigned_service || "dropshipping",
     });
     setModalOpen(true);
+  };
+
+  const blogOwnerForActivity = (row) => {
+    if (!row?.created_by) return null;
+    const owner = profileMap[row.created_by];
+    if (!owner) return null;
+    if (isAdminProfile(profile) && owner.id !== user.id) return owner;
+    return null;
   };
 
   const openEdit = (row) => {
@@ -95,12 +99,16 @@ export default function BlogsPage() {
       showToast("Blog title is required", "error");
       return;
     }
+    if (!SERVICES.includes(form.service)) {
+      showToast("Please select a service", "error");
+      return;
+    }
 
     const payload = {
       title: form.title.trim(),
       target_keyword: form.target_keyword.trim(),
       country: form.country.trim(),
-      service: isAdmin ? form.service : profile?.assigned_service,
+      service: form.service,
       status: form.status,
       url: form.url.trim() || null,
       word_count: form.word_count === "" ? null : Number(form.word_count),
@@ -111,10 +119,15 @@ export default function BlogsPage() {
     };
 
     if (editing) {
-      const { error } = await supabase.from("blogs").update(payload).eq("id", editing.id);
+      const { created_by: _omit, ...updatePayload } = payload;
+      const { error } = await supabase
+        .from("blogs")
+        .update(updatePayload)
+        .eq("id", editing.id);
       if (error) return showToast(error.message, "error");
       await logActivity({
         user: profile,
+        attributedUser: blogOwnerForActivity(editing),
         action: "updated_blog",
         entityType: "blog",
         entityId: editing.id,
@@ -145,14 +158,16 @@ export default function BlogsPage() {
     if (!confirm(`Delete blog "${row.title}"?`)) return;
     const { error } = await supabase.from("blogs").delete().eq("id", row.id);
     if (error) return showToast(error.message, "error");
-    await logActivity({
-      user: profile,
-      action: "deleted_blog",
-      entityType: "blog",
-      entityId: row.id,
-      entityName: row.title,
-      service: row.service,
-    });
+    if (!blogOwnerForActivity(row)) {
+      await logActivity({
+        user: profile,
+        action: "deleted_blog",
+        entityType: "blog",
+        entityId: row.id,
+        entityName: row.title,
+        service: row.service,
+      });
+    }
     showToast("Blog deleted");
     refetch();
   };
@@ -165,6 +180,7 @@ export default function BlogsPage() {
     if (error) return showToast(error.message, "error");
     await logActivity({
       user: profile,
+      attributedUser: blogOwnerForActivity(row),
       action: "updated_blog_status",
       entityType: "blog",
       entityId: row.id,
@@ -185,7 +201,7 @@ export default function BlogsPage() {
           <p className="mt-1 text-sm text-slate-500">
             {isAdmin
               ? "Track who published what, target keywords, and word counts."
-              : "Log blogs you write — keyword, country, and status."}
+              : "Log blogs you write — pick the service, keyword, country, and status."}
           </p>
         </div>
         <button type="button" onClick={openAdd} className="btn-primary flex items-center gap-2">
@@ -397,22 +413,24 @@ export default function BlogsPage() {
               placeholder="e.g. UAE, Pakistan"
             />
           </div>
-          {isAdmin && (
-            <div>
-              <label className="mb-1 block text-sm font-medium">Service</label>
-              <select
-                value={form.service}
-                onChange={(e) => setForm({ ...form, service: e.target.value })}
-                className="w-full"
-              >
-                {SERVICES.map((s) => (
-                  <option key={s} value={s}>
-                    {SERVICE_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Service *</label>
+            <select
+              required
+              value={form.service}
+              onChange={(e) => setForm({ ...form, service: e.target.value })}
+              className="w-full"
+            >
+              {SERVICES.map((s) => (
+                <option key={s} value={s}>
+                  {SERVICE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Which service this blog is for (3PL, 360, or Dropshipping).
+            </p>
+          </div>
           <div>
             <label className="mb-1 block text-sm font-medium">Status</label>
             <select

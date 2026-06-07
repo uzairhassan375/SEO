@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useKeywords(serviceFilter) {
-  const { profile, isAdmin } = useAuth();
+  const { profile } = useAuth();
   const [keywords, setKeywords] = useState([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -13,15 +13,13 @@ export function useKeywords(serviceFilter) {
   const fetchKeywords = useCallback(async () => {
     setLoading(true);
     let query = supabase.from("keywords").select("*").order("created_at", { ascending: false });
-    if (!isAdmin && profile?.assigned_service) {
-      query = query.eq("service", profile.assigned_service);
-    } else if (serviceFilter && serviceFilter !== "all") {
+    if (serviceFilter && serviceFilter !== "all") {
       query = query.eq("service", serviceFilter);
     }
     const { data, error } = await query;
     if (!error) setKeywords(data || []);
     setLoading(false);
-  }, [supabase, isAdmin, profile, serviceFilter]);
+  }, [supabase, profile, serviceFilter]);
 
   useEffect(() => {
     fetchKeywords();

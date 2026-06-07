@@ -2,6 +2,8 @@ import { createClient } from "./supabase/client";
 
 export async function logActivity({
   user,
+  /** When set (e.g. blog owner), activity is attributed to this user instead of the actor. */
+  attributedUser,
   action,
   entityType,
   entityId,
@@ -11,9 +13,10 @@ export async function logActivity({
   newValue,
 }) {
   const supabase = createClient();
+  const subject = attributedUser || user;
   const { error } = await supabase.from("activity_log").insert({
-    user_id: user?.id,
-    user_name: user?.full_name || user?.email,
+    user_id: subject?.id,
+    user_name: subject?.full_name || subject?.email,
     action,
     entity_type: entityType,
     entity_id: entityId,

@@ -26,13 +26,34 @@ export default function ImportantInfoPage() {
   const [week, setWeek] = useState(getWeekNumber());
   const [year, setYear] = useState(new Date().getFullYear());
   const [record, setRecord] = useState(null);
+  const [displayRecord, setDisplayRecord] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("Weekly priorities");
   const [bulletText, setBulletText] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const fetchLatestPublished = async () => {
+    const { data } = await supabase
+      .from("weekly_important_info")
+      .select("*")
+      .eq("published", true)
+      .order("year", { ascending: false })
+      .order("week_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data?.items?.length) return null;
+    return data;
+  };
+
+  const isPublishedRecord = (row) =>
+    row?.published && Array.isArray(row.items) && row.items.length > 0;
+
   const fetchWeek = async (w, y) => {
+    const calendarWeek = getWeekNumber();
+    const calendarYear = new Date().getFullYear();
+    const isViewingCurrentWeek = w === calendarWeek && y === calendarYear;
+
     const { data } = await supabase
       .from("weekly_important_info")
       .select("*")
@@ -40,9 +61,32 @@ export default function ImportantInfoPage() {
       .eq("year", y)
       .maybeSingle();
     setRecord(data);
-    if (isAdmin || data?.published) {
-      setTitle(data?.title || "Weekly priorities");
-      setBulletText(textFromBullets(data?.items));
+
+    const activeForWeek = isPublishedRecord(data) ? data : null;
+    let visible = activeForWeek;
+    if (!visible && isViewingCurrentWeek) {
+      visible = await fetchLatestPublished();
+    }
+    setDisplayRecord(visible);
+
+    if (isAdmin) {
+      if (data) {
+        setTitle(data.title || "Weekly priorities");
+        setBulletText(textFromBullets(data.items));
+      } else if (
+        isViewingCurrentWeek &&
+        visible &&
+        (visible.week_number !== w || visible.year !== y)
+      ) {
+        setTitle(visible.title || "Weekly priorities");
+        setBulletText(textFromBullets(visible.items));
+      } else {
+        setTitle("Weekly priorities");
+        setBulletText("");
+      }
+    } else if (data?.published) {
+      setTitle(data.title || "Weekly priorities");
+      setBulletText(textFromBullets(data.items));
     } else {
       setTitle("Weekly priorities");
       setBulletText("");
@@ -135,8 +179,12 @@ export default function ImportantInfoPage() {
     setBulletText((t) => (t ? `${t}\n` : "") + "• ");
   };
 
-  const hasPublishedContent =
-    record?.published && record?.items?.length > 0;
+  const hasPublishedContent = isPublishedRecord(displayRecord);
+  const hasCurrentWeekPost = isPublishedRecord(record);
+  const showingPreviousWeek =
+    hasPublishedContent &&
+    displayRecord &&
+    (displayRecord.week_number !== week || displayRecord.year !== year);
 
   if (loading) return <LoadingSpinner />;
 
@@ -202,10 +250,17 @@ export default function ImportantInfoPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-slate-900">
             <ListChecks className="h-5 w-5 text-[#1e3a5f]" />
-            {hasPublishedContent ? "Edit this week" : "Post for this week"}
+            {hasCurrentWeekPost ? "Edit this week" : "Post for this week"}
           </h2>
           <p className="mb-4 text-sm text-slate-500">
             One bullet per line. Team only sees this after you publish.
+            {showingPreviousWeek && (
+              <>
+                {" "}
+                The team still sees Week {displayRecord.week_number} until you
+                publish for Week {week}.
+              </>
+            )}
           </p>
           <label className="mb-1 block text-sm font-medium">Title</label>
           <input
@@ -241,7 +296,7 @@ export default function ImportantInfoPage() {
               <Save className="h-4 w-4" />
               {saving ? "Saving…" : "Publish for team"}
             </button>
-            {hasPublishedContent && (
+            {hasCurrentWeekPost && (
               <button
                 type="button"
                 onClick={unpublish}
@@ -257,13 +312,19 @@ export default function ImportantInfoPage() {
 
       {hasPublishedContent ? (
         <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-sm sm:p-6 lg:p-8">
-          <h2 className="text-xl font-bold text-amber-950">{record.title}</h2>
+          <h2 className="text-xl font-bold text-amber-950">{displayRecord.title}</h2>
           <p className="mt-1 text-sm text-amber-800/80">
-            Week {record.week_number}, {record.year}
-            {record.updated_at && ` · Updated ${timeAgo(record.updated_at)}`}
+            Week {displayRecord.week_number}, {displayRecord.year}
+            {displayRecord.updated_at &&
+              ` · Updated ${timeAgo(displayRecord.updated_at)}`}
+            {showingPreviousWeek && (
+              <span className="ml-1 text-amber-700">
+                · Active until Week {week} is published
+              </span>
+            )}
           </p>
           <ul className="mt-6 space-y-3">
-            {record.items.map((item, i) => (
+            {displayRecord.items.map((item, i) => (
               <li
                 key={i}
                 className="flex gap-3 text-base leading-relaxed text-amber-950"
@@ -278,11 +339,9 @@ export default function ImportantInfoPage() {
         !isAdmin && (
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center">
             <Megaphone className="mx-auto h-10 w-10 text-slate-300" />
-            <p className="mt-3 text-slate-600">
-              No priorities posted for Week {week}, {year} yet.
-            </p>
+            <p className="mt-3 text-slate-600">No priorities have been posted yet.</p>
             <p className="mt-1 text-sm text-slate-400">
-              Check back when your admin publishes this week&apos;s list.
+              Your admin will publish the weekly list when it is ready.
             </p>
           </div>
         )

@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Minus, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { useKeywords } from "@/hooks/useKeywords";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import Modal from "@/components/Modal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
-import { PriorityBadge } from "@/components/Badge";
+import { ServiceBadge } from "@/components/Badge";
 import { SERVICES, SERVICE_LABELS } from "@/lib/constants";
 import { logActivity } from "@/lib/activity";
-import { formatRank, formatImpressions, rankTrend } from "@/lib/utils";
+import { formatRank, formatImpressions } from "@/lib/utils";
 
 const WEEK_FIELDS = [
   { rank: "rank_week1", imp: "impressions_week1", label: "W1" },
@@ -24,7 +24,7 @@ const emptyForm = {
   keyword: "",
   service: "dropshipping",
   country: "",
-  priority: "medium",
+  origin_country: "",
   current_rank: "",
   rank_week1: "",
   rank_week2: "",
@@ -36,11 +36,11 @@ const emptyForm = {
   impressions_week4: "",
 };
 
-function WeekCell({ rank, impressions }) {
+function WeekCell({ rank, volume }) {
   return (
     <div className="flex min-w-[4.5rem] flex-col gap-2 py-1">
       <span className="text-sm font-semibold tabular-nums text-slate-900">{formatRank(rank)}</span>
-      <span className="text-xs tabular-nums text-slate-500">{formatImpressions(impressions)}</span>
+      <span className="text-xs tabular-nums text-slate-500">{formatImpressions(volume)}</span>
     </div>
   );
 }
@@ -50,7 +50,7 @@ export default function KeywordsPage() {
   const { showToast } = useToast();
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
-  const [countryFilter, setCountryFilter] = useState("all");
+  const [targetFilter, setTargetFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -58,13 +58,9 @@ export default function KeywordsPage() {
   const serviceFilter = tab === "all" ? null : tab;
   const { keywords, loading, refetch } = useKeywords(serviceFilter);
 
-  const tabs = isAdmin
-    ? ["all", ...SERVICES]
-    : profile?.assigned_service
-      ? [profile.assigned_service]
-      : [];
+  const tabs = ["all", ...SERVICES];
 
-  const countries = useMemo(() => {
+  const targets = useMemo(() => {
     const set = new Set();
     keywords.forEach((k) => {
       const c = (k.country || "").trim();
@@ -73,24 +69,24 @@ export default function KeywordsPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [keywords]);
 
-  const activeCountryFilter =
-    countryFilter !== "all" && countries.includes(countryFilter) ? countryFilter : "all";
+  const activeTargetFilter =
+    targetFilter !== "all" && targets.includes(targetFilter) ? targetFilter : "all";
 
   const filtered = useMemo(() => {
     return keywords.filter((k) => {
-      if (activeCountryFilter !== "all") {
+      if (activeTargetFilter !== "all") {
         const c = (k.country || "").trim();
-        if (c !== activeCountryFilter) return false;
+        if (c !== activeTargetFilter) return false;
       }
       return k.keyword.toLowerCase().includes(search.toLowerCase());
     });
-  }, [keywords, search, activeCountryFilter]);
+  }, [keywords, search, activeTargetFilter]);
 
   const openAdd = () => {
     setEditing(null);
     setForm({
       ...emptyForm,
-      service: isAdmin ? "dropshipping" : profile?.assigned_service || "dropshipping",
+      service: profile?.assigned_service || "dropshipping",
     });
     setModalOpen(true);
   };
@@ -101,7 +97,7 @@ export default function KeywordsPage() {
       keyword: row.keyword,
       service: row.service,
       country: row.country || "",
-      priority: row.priority,
+      origin_country: row.origin_country || "",
       current_rank: row.current_rank ?? "",
       rank_week1: row.rank_week1 ?? "",
       rank_week2: row.rank_week2 ?? "",
@@ -123,11 +119,15 @@ export default function KeywordsPage() {
       showToast("Keyword is required", "error");
       return;
     }
+    if (!SERVICES.includes(form.service)) {
+      showToast("Please select a service", "error");
+      return;
+    }
     const payload = {
       keyword: form.keyword.trim(),
-      service: isAdmin ? form.service : profile?.assigned_service,
-      country: form.country,
-      priority: form.priority,
+      service: form.service,
+      country: form.country.trim(),
+      origin_country: form.origin_country.trim(),
       current_rank: numOrNull(form.current_rank),
       rank_week1: numOrNull(form.rank_week1),
       rank_week2: numOrNull(form.rank_week2),
@@ -162,7 +162,7 @@ export default function KeywordsPage() {
     } else {
       const { data, error } = await supabase
         .from("keywords")
-        .insert(payload)
+        .insert({ ...payload, priority: "medium" })
         .select()
         .single();
       if (error) return showToast(error.message, "error");
@@ -197,20 +197,13 @@ export default function KeywordsPage() {
     refetch();
   };
 
-  const TrendIcon = ({ current, baseline }) => {
-    const t = rankTrend(current, baseline);
-    if (t === "up") return <ArrowUp className="h-4 w-4 text-emerald-600" title="Improved vs W4" />;
-    if (t === "down") return <ArrowDown className="h-4 w-4 text-red-600" title="Dropped vs W4" />;
-    return <Minus className="h-4 w-4 text-slate-400" title="No change vs W4" />;
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Keywords</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Weekly rank and impressions (W1–W4). Trend compares current rank to W4.
+            Weekly rank and search volume (W1–W4) by target and origin country.
           </p>
         </div>
         <button type="button" onClick={openAdd} className="btn-primary flex items-center gap-2">
@@ -225,7 +218,7 @@ export default function KeywordsPage() {
             type="button"
             onClick={() => {
               setTab(t);
-              setCountryFilter("all");
+              setTargetFilter("all");
             }}
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
               tab === t
@@ -249,19 +242,19 @@ export default function KeywordsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        {countries.length > 0 && (
+        {targets.length > 0 && (
           <div className="flex items-center gap-2">
-            <label htmlFor="country-filter" className="text-sm font-medium text-slate-600">
-              Country
+            <label htmlFor="target-filter" className="text-sm font-medium text-slate-600">
+              Target
             </label>
             <select
-              id="country-filter"
-              value={activeCountryFilter}
-              onChange={(e) => setCountryFilter(e.target.value)}
+              id="target-filter"
+              value={activeTargetFilter}
+              onChange={(e) => setTargetFilter(e.target.value)}
               className="min-w-[140px] text-sm"
             >
-              <option value="all">All countries</option>
-              {countries.map((c) => (
+              <option value="all">All targets</option>
+              {targets.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
@@ -279,7 +272,7 @@ export default function KeywordsPage() {
           message={
             keywords.length === 0
               ? "Add your first keyword to start tracking rankings."
-              : "Try a different search or country filter."
+              : "Try a different search or target filter."
           }
         />
       ) : (
@@ -288,19 +281,19 @@ export default function KeywordsPage() {
             <thead className="border-b bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-3">Keyword</th>
-                <th className="px-4 py-3">Country</th>
-                <th className="px-4 py-3">Priority</th>
+                {tab === "all" && <th className="px-4 py-3">Service</th>}
+                <th className="px-4 py-3">Target</th>
+                <th className="px-4 py-3">Origin</th>
                 {WEEK_FIELDS.map((w) => (
                   <th key={w.label} className="px-5 py-3">
                     <span className="block text-slate-600">{w.label}</span>
                     <div className="mt-2 space-y-1 font-normal normal-case">
                       <span className="block text-[10px] tracking-wide text-slate-400">Rank</span>
-                      <span className="block text-[10px] tracking-wide text-slate-400">Impr.</span>
+                      <span className="block text-[10px] tracking-wide text-slate-400">Vol.</span>
                     </div>
                   </th>
                 ))}
                 <th className="px-4 py-3">Current</th>
-                <th className="px-4 py-3">Trend</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
@@ -308,19 +301,19 @@ export default function KeywordsPage() {
               {filtered.map((k) => (
                 <tr key={k.id}>
                   <td className="px-4 py-3 font-medium">{k.keyword}</td>
+                  {tab === "all" && (
+                    <td className="px-4 py-3">
+                      <ServiceBadge service={k.service} />
+                    </td>
+                  )}
                   <td className="px-4 py-3">{k.country || "—"}</td>
-                  <td className="px-4 py-3">
-                    <PriorityBadge priority={k.priority} />
-                  </td>
+                  <td className="px-4 py-3">{k.origin_country || "—"}</td>
                   {WEEK_FIELDS.map((w) => (
                     <td key={w.label} className="px-5 py-3.5 align-top">
-                      <WeekCell rank={k[w.rank]} impressions={k[w.imp]} />
+                      <WeekCell rank={k[w.rank]} volume={k[w.imp]} />
                     </td>
                   ))}
                   <td className="px-4 py-3 font-semibold">{formatRank(k.current_rank)}</td>
-                  <td className="px-4 py-3">
-                    <TrendIcon current={k.current_rank} baseline={k.rank_week4} />
-                  </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
@@ -364,41 +357,41 @@ export default function KeywordsPage() {
                 className="w-full"
               />
             </div>
-            {isAdmin && (
-              <div>
-                <label className="mb-1 block text-sm font-medium">Service</label>
-                <select
-                  value={form.service}
-                  onChange={(e) => setForm({ ...form, service: e.target.value })}
-                  className="w-full"
-                >
-                  {SERVICES.map((s) => (
-                    <option key={s} value={s}>
-                      {SERVICE_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
             <div>
-              <label className="mb-1 block text-sm font-medium">Country</label>
+              <label className="mb-1 block text-sm font-medium">Service *</label>
+              <select
+                required
+                value={form.service}
+                onChange={(e) => setForm({ ...form, service: e.target.value })}
+                className="w-full"
+              >
+                {SERVICES.map((s) => (
+                  <option key={s} value={s}>
+                    {SERVICE_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Which service this keyword belongs to (3PL, 360, or Dropshipping).
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Target</label>
               <input
                 value={form.country}
                 onChange={(e) => setForm({ ...form, country: e.target.value })}
                 className="w-full"
+                placeholder="e.g. UAE, Pakistan"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Priority</label>
-              <select
-                value={form.priority}
-                onChange={(e) => setForm({ ...form, priority: e.target.value })}
+              <label className="mb-1 block text-sm font-medium">Origin country</label>
+              <input
+                value={form.origin_country}
+                onChange={(e) => setForm({ ...form, origin_country: e.target.value })}
                 className="w-full"
-              >
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
+                placeholder="e.g. USA, UK"
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Current rank</label>
@@ -433,7 +426,7 @@ export default function KeywordsPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-slate-600">Impressions</label>
+                      <label className="mb-1.5 block text-xs text-slate-600">Volume</label>
                       <input
                         type="number"
                         min={0}

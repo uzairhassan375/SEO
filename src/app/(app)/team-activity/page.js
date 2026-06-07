@@ -10,7 +10,16 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { SERVICES, SERVICE_LABELS } from "@/lib/constants";
 import { timeAgo, getWeekNumber, getDisplayName } from "@/lib/utils";
 
-const ACTION_TYPES = ["keyword", "page", "backlink", "task", "report"];
+const ACTION_TYPES = ["keyword", "page", "backlink", "blog", "task", "report"];
+
+const ACTION_FILTER_LABELS = {
+  keyword: "Keywords",
+  page: "Pages",
+  backlink: "Backlinks",
+  blog: "Blogs",
+  task: "Tasks",
+  report: "Reports",
+};
 
 function TeamActivityContent() {
   const searchParams = useSearchParams();
@@ -53,6 +62,7 @@ function TeamActivityContent() {
         if (actionFilter === "page" && type !== "page") return false;
         if (actionFilter === "backlink" && type !== "backlink") return false;
         if (actionFilter === "task" && type !== "task") return false;
+        if (actionFilter === "blog" && type !== "blog") return false;
         if (actionFilter === "report" && type !== "report") return false;
       }
       return true;
@@ -74,6 +84,10 @@ function TeamActivityContent() {
         keywordsUpdated: acts.filter((a) => a.action.includes("keyword")).length,
         ranksImproved: acts.filter((a) => a.action === "updated_keyword").length,
         backlinksAdded: acts.filter((a) => a.action.includes("link")).length,
+        blogsAdded: acts.filter((a) => a.action === "added_blog").length,
+        blogsUpdated: acts.filter(
+          (a) => a.entity_type === "blog" && a.action !== "added_blog"
+        ).length,
         tasksCompleted: tasksDone,
         lastActive: activity.find((a) => a.user_id === m.id)?.created_at,
       };
@@ -84,6 +98,8 @@ function TeamActivityContent() {
     { key: "keywordsUpdated", label: "Keywords updated" },
     { key: "ranksImproved", label: "Ranks improved" },
     { key: "backlinksAdded", label: "Backlinks added" },
+    { key: "blogsAdded", label: "Blogs added" },
+    { key: "blogsUpdated", label: "Blog updates" },
     { key: "tasksCompleted", label: "Tasks completed" },
   ];
 
@@ -130,7 +146,9 @@ function TeamActivityContent() {
               <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} className="text-sm">
                 <option value="all">All actions</option>
                 {ACTION_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {ACTION_FILTER_LABELS[t] || t}
+                  </option>
                 ))}
               </select>
               <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="text-sm">
@@ -213,6 +231,8 @@ function TeamActivityContent() {
                 <div className="flex justify-between"><dt>Keywords updated</dt><dd className="font-medium">{m.keywordsUpdated}</dd></div>
                 <div className="flex justify-between"><dt>Ranks improved</dt><dd className="font-medium">{m.ranksImproved}</dd></div>
                 <div className="flex justify-between"><dt>Backlinks added</dt><dd className="font-medium">{m.backlinksAdded}</dd></div>
+                <div className="flex justify-between"><dt>Blogs added</dt><dd className="font-medium">{m.blogsAdded}</dd></div>
+                <div className="flex justify-between"><dt>Blog updates</dt><dd className="font-medium">{m.blogsUpdated}</dd></div>
                 <div className="flex justify-between"><dt>Tasks completed</dt><dd className="font-medium">{m.tasksCompleted}</dd></div>
               </dl>
               <p className="mt-3 text-xs text-slate-400">
