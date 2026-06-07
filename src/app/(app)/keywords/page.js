@@ -50,6 +50,7 @@ export default function KeywordsPage() {
   const { showToast } = useToast();
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [originFilter, setOriginFilter] = useState("all");
   const [targetFilter, setTargetFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -60,6 +61,15 @@ export default function KeywordsPage() {
 
   const tabs = ["all", ...SERVICES];
 
+  const origins = useMemo(() => {
+    const set = new Set();
+    keywords.forEach((k) => {
+      const c = (k.origin_country || "").trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [keywords]);
+
   const targets = useMemo(() => {
     const set = new Set();
     keywords.forEach((k) => {
@@ -69,18 +79,25 @@ export default function KeywordsPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [keywords]);
 
+  const activeOriginFilter =
+    originFilter !== "all" && origins.includes(originFilter) ? originFilter : "all";
+
   const activeTargetFilter =
     targetFilter !== "all" && targets.includes(targetFilter) ? targetFilter : "all";
 
   const filtered = useMemo(() => {
     return keywords.filter((k) => {
+      if (activeOriginFilter !== "all") {
+        const origin = (k.origin_country || "").trim();
+        if (origin !== activeOriginFilter) return false;
+      }
       if (activeTargetFilter !== "all") {
-        const c = (k.country || "").trim();
-        if (c !== activeTargetFilter) return false;
+        const target = (k.country || "").trim();
+        if (target !== activeTargetFilter) return false;
       }
       return k.keyword.toLowerCase().includes(search.toLowerCase());
     });
-  }, [keywords, search, activeTargetFilter]);
+  }, [keywords, search, activeOriginFilter, activeTargetFilter]);
 
   const openAdd = () => {
     setEditing(null);
@@ -218,6 +235,7 @@ export default function KeywordsPage() {
             type="button"
             onClick={() => {
               setTab(t);
+              setOriginFilter("all");
               setTargetFilter("all");
             }}
             className={`rounded-lg px-4 py-2 text-sm font-medium ${
@@ -242,26 +260,42 @@ export default function KeywordsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        {targets.length > 0 && (
-          <div className="flex items-center gap-2">
-            <label htmlFor="target-filter" className="text-sm font-medium text-slate-600">
-              Target
-            </label>
-            <select
-              id="target-filter"
-              value={activeTargetFilter}
-              onChange={(e) => setTargetFilter(e.target.value)}
-              className="min-w-[140px] text-sm"
-            >
-              <option value="all">All targets</option>
-              {targets.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <label htmlFor="origin-filter" className="text-sm font-medium text-slate-600">
+            Origin
+          </label>
+          <select
+            id="origin-filter"
+            value={activeOriginFilter}
+            onChange={(e) => setOriginFilter(e.target.value)}
+            className="min-w-[140px] text-sm"
+          >
+            <option value="all">All origins</option>
+            {origins.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="target-filter" className="text-sm font-medium text-slate-600">
+            Target
+          </label>
+          <select
+            id="target-filter"
+            value={activeTargetFilter}
+            onChange={(e) => setTargetFilter(e.target.value)}
+            className="min-w-[140px] text-sm"
+          >
+            <option value="all">All targets</option>
+            {targets.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -272,7 +306,7 @@ export default function KeywordsPage() {
           message={
             keywords.length === 0
               ? "Add your first keyword to start tracking rankings."
-              : "Try a different search or target filter."
+              : "Try a different search or origin/target filter."
           }
         />
       ) : (
@@ -282,8 +316,8 @@ export default function KeywordsPage() {
               <tr>
                 <th className="px-4 py-3">Keyword</th>
                 {tab === "all" && <th className="px-4 py-3">Service</th>}
-                <th className="px-4 py-3">Target</th>
                 <th className="px-4 py-3">Origin</th>
+                <th className="px-4 py-3">Target</th>
                 {WEEK_FIELDS.map((w) => (
                   <th key={w.label} className="px-5 py-3">
                     <span className="block text-slate-600">{w.label}</span>
@@ -306,8 +340,8 @@ export default function KeywordsPage() {
                       <ServiceBadge service={k.service} />
                     </td>
                   )}
-                  <td className="px-4 py-3">{k.country || "—"}</td>
                   <td className="px-4 py-3">{k.origin_country || "—"}</td>
+                  <td className="px-4 py-3">{k.country || "—"}</td>
                   {WEEK_FIELDS.map((w) => (
                     <td key={w.label} className="px-5 py-3.5 align-top">
                       <WeekCell rank={k[w.rank]} volume={k[w.imp]} />
@@ -376,21 +410,21 @@ export default function KeywordsPage() {
               </p>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Target</label>
-              <input
-                value={form.country}
-                onChange={(e) => setForm({ ...form, country: e.target.value })}
-                className="w-full"
-                placeholder="e.g. UAE, Pakistan"
-              />
-            </div>
-            <div>
               <label className="mb-1 block text-sm font-medium">Origin country</label>
               <input
                 value={form.origin_country}
                 onChange={(e) => setForm({ ...form, origin_country: e.target.value })}
                 className="w-full"
                 placeholder="e.g. USA, UK"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Target</label>
+              <input
+                value={form.country}
+                onChange={(e) => setForm({ ...form, country: e.target.value })}
+                className="w-full"
+                placeholder="e.g. UAE, Pakistan"
               />
             </div>
             <div>
