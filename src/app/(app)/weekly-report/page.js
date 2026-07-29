@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { ChevronDown, Pencil, Trash2, Plus } from "lucide-react";
+import { ChevronDown, Pencil, Trash2, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { createClient } from "@/lib/supabase/client";
 import { SERVICES, SERVICE_LABELS } from "@/lib/constants";
 import { logActivity } from "@/lib/activity";
 import { getWeekNumber, cn, getDisplayName } from "@/lib/utils";
+import { useWeeklyMetrics } from "@/hooks/useWeeklyMetrics";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { ServiceBadge } from "@/components/Badge";
 import { PeriodPicker } from "@/components/ReportGuide";
@@ -213,9 +214,22 @@ export default function WeeklyReportPage() {
 
   const [memberDraft, setMemberDraft] = useState(null);
 
+  const {
+    metrics: autoMetrics,
+    loading: metricsLoading,
+    refetch: refetchMetrics,
+  } = useWeeklyMetrics(isAdmin ? null : user?.id, week, year);
+
   useEffect(() => {
     if (memberForm) setMemberDraft({ ...memberForm });
   }, [memberForm]);
+
+  // numbers always come from the user's own logged work — never typed in.
+  // memberForm is a dep so a freshly loaded/saved report gets the live counts too.
+  useEffect(() => {
+    if (isAdmin || metricsLoading) return;
+    setMemberDraft((draft) => (draft ? { ...draft, ...autoMetrics } : draft));
+  }, [isAdmin, autoMetrics, metricsLoading, memberForm]);
 
   const toggleExpand = (report) => {
     if (expandedId === report.id) {
@@ -335,7 +349,7 @@ export default function WeeklyReportPage() {
           <p className="mt-1 text-sm text-slate-500">
             {isAdmin
               ? "Review team submissions and edit service reports."
-              : "Pick the week, enter your numbers, and submit once."}
+              : "Your numbers are pulled from your own work — pick the week and submit."}
           </p>
         </div>
         {isAdmin ? (
@@ -523,7 +537,7 @@ export default function WeeklyReportPage() {
                 Submit weekly report — {SERVICE_LABELS[memberService]}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Week {week}, {year}. Fill in your numbers, then click Submit.
+                Week {week}, {year}. Your numbers are filled in automatically — review and submit.
               </p>
             </div>
             <span
@@ -537,33 +551,81 @@ export default function WeeklyReportPage() {
               {memberDraft.id ? "Submitted" : "Not submitted yet"}
             </span>
           </div>
-          <ReportForm
-            report={memberDraft}
-            onChange={setMemberDraft}
-            onSave={saveMemberReport}
-            onDelete={() => deleteReport(memberDraft)}
-            saving={saving}
-            showDelete={canDeleteReport(memberDraft)}
-            saveLabel={memberDraft.id ? "Update report" : "Submit weekly report"}
-          />
-        </div>
-      )}
+          <div className="space-y-4 border-t border-slate-100 bg-slate-50/50 px-5 py-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 text-sm font-medium text-indigo-700">
+                <Sparkles className="h-4 w-4" />
+                Pulled automatically from your keywords, links, and blogs for this week
+              </p>
+              <button
+                type="button"
+                onClick={refetchMetrics}
+                disabled={metricsLoading}
+                className="btn-secondary flex items-center gap-2 text-xs"
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", metricsLoading && "animate-spin")} />
+                Refresh
+              </button>
+            </div>
 
-      {!isAdmin && memberDraft && (
-        <div className="rounded-xl border bg-slate-100 p-5">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">
-            Your summary — Week {week}, {year}
-          </h2>
-          <dl className="grid gap-3 sm:grid-cols-3 md:grid-cols-5">
-            {METRIC_FIELDS.map(({ key, label }) => (
-              <div key={key} className="rounded-lg bg-white px-3 py-2">
-                <dt className="text-xs text-slate-500">{label}</dt>
-                <dd className="text-lg font-semibold text-slate-900">
-                  {memberDraft.id ? Number(memberDraft[key]) || 0 : "—"}
-                </dd>
-              </div>
-            ))}
-          </dl>
+            <dl className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {METRIC_FIELDS.map(({ key, label }) => (
+                <div
+                  key={key}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2.5"
+                >
+                  <dt className="text-xs text-slate-500">{label}</dt>
+                  <dd className="text-2xl font-bold text-slate-900">
+                    {metricsLoading ? "…" : Number(memberDraft[key]) || 0}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Notes (optional)
+              </label>
+              <textarea
+                value={memberDraft.notes || ""}
+                onChange={(e) => setMemberDraft({ ...memberDraft, notes: e.target.value })}
+                className="w-full"
+                rows={3}
+                placeholder="Anything the numbers don't show — blockers, wins, plans for next week."
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={saveMemberReport}
+                disabled={saving || metricsLoading}
+                className="btn-primary flex items-center gap-2 text-sm"
+              >
+                <Pencil className="h-4 w-4" />
+                {saving
+                  ? "Saving…"
+                  : memberDraft.id
+                    ? "Update report"
+                    : "Submit weekly report"}
+              </button>
+              {canDeleteReport(memberDraft) && (
+                <button
+                  type="button"
+                  onClick={() => deleteReport(memberDraft)}
+                  disabled={saving}
+                  className="btn-secondary flex items-center gap-2 text-sm text-red-600"
+                >
+                  <Trash2 className="h-4 w-4" /> Remove report
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">
+              Counts come from what you logged in the app: backlinks and guest posts added this
+              week, blogs published or set live this week, keyword updates where the rank improved,
+              and page rankings entered for this week.
+            </p>
+          </div>
         </div>
       )}
 

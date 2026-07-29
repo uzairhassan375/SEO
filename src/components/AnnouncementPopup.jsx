@@ -5,71 +5,90 @@ import { Megaphone, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { timeAgo } from "@/lib/utils";
 
-/** Shown once per browser session — i.e. again on every fresh login. */
-const SESSION_KEY = "zambeel_announcements_shown";
-
+/**
+ * Shows every announcement the member hasn't acknowledged yet.
+ * "Got it" acknowledges it (admin then sees it as read). If the admin hits
+ * Resend, the acknowledgement is cleared and this pops up again — live, via
+ * the realtime subscription below, without needing a reload or a new login.
+ */
 export default function AnnouncementPopup() {
   const { user, isAdmin, supabase } = useAuth();
   const [queue, setQueue] = useState([]);
   const [index, setIndex] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!user || !supabase || isAdmin) return;
+
+    const { data, error } = await supabase
+      .from("announcement_recipients")
+      .select(
+        "announcement_id, seen_count, announcements!inner(id, title, body, created_at, active)"
+      )
+      .eq("user_id", user.id)
+      .is("acknowledged_at", null)
+      .eq("announcements.active", true);
+
+    if (error || !data?.length) {
+      setQueue([]);
+      return;
+    }
+
+    setQueue(
+      data
+        .map((r) => ({ ...r.announcements, seenCount: r.seen_count }))
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    );
+    setIndex(0);
+  }, [user, supabase, isAdmin]);
 
   useEffect(() => {
     if (!user || !supabase || isAdmin) return;
-    if (sessionStorage.getItem(SESSION_KEY) === user.id) return;
-
-    let cancelled = false;
-
-    const load = async () => {
-      const { data, error } = await supabase
-        .from("announcement_recipients")
-        .select("announcement_id, seen_count, announcements!inner(id, title, body, created_at, active)")
-        .eq("user_id", user.id)
-        .eq("announcements.active", true)
-        .order("announcement_id");
-
-      if (cancelled || error || !data?.length) return;
-
-      const items = data
-        .map((r) => ({ ...r.announcements, seenCount: r.seen_count }))
-        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-
-      setQueue(items);
-      setIndex(0);
-    };
-
     load();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, isAdmin, supabase]);
 
-  const markSeen = useCallback(
-    async (announcementId, seenCount) => {
-      const now = new Date().toISOString();
-      const patch = { last_seen_at: now, seen_count: (seenCount || 0) + 1 };
-      if (!seenCount) patch.first_seen_at = now;
-      await supabase
-        .from("announcement_recipients")
-        .update(patch)
-        .eq("announcement_id", announcementId)
-        .eq("user_id", user.id);
-    },
-    [supabase, user]
-  );
+    const channel = supabase
+      .channel(`announcements_for_${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "announcement_recipients",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => load()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, supabase, isAdmin, load]);
 
   const current = queue[index];
   if (!current) return null;
 
   const isLast = index === queue.length - 1;
 
-  const advance = async () => {
-    await markSeen(current.id, current.seenCount);
-    if (isLast) {
-      sessionStorage.setItem(SESSION_KEY, user.id);
-      setQueue([]);
-    } else {
-      setIndex((i) => i + 1);
-    }
+  const acknowledge = async () => {
+    setBusy(true);
+    const now = new Date().toISOString();
+    const patch = {
+      acknowledged_at: now,
+      last_seen_at: now,
+      seen_count: (current.seenCount || 0) + 1,
+    };
+    if (!current.seenCount) patch.first_seen_at = now;
+
+    await supabase
+      .from("announcement_recipients")
+      .update(patch)
+      .eq("announcement_id", current.id)
+      .eq("user_id", user.id);
+    setBusy(false);
+
+    if (isLast) setQueue([]);
+    else setIndex((i) => i + 1);
   };
 
   return (
@@ -107,9 +126,15 @@ export default function AnnouncementPopup() {
           <p className="mt-4 text-xs text-slate-400">Sent {timeAgo(current.created_at)}</p>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-4">
-          <button type="button" onClick={advance} className="btn-primary flex items-center gap-2">
-            {isLast ? "Got it" : "Next"}
+        <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-5 py-4">
+          <p className="text-xs text-slate-500">The admin is notified once you confirm.</p>
+          <button
+            type="button"
+            onClick={acknowledge}
+            disabled={busy}
+            className="btn-primary flex items-center gap-2"
+          >
+            {isLast ? "Okay, got it" : "Next"}
             {!isLast && <ArrowRight className="h-4 w-4" />}
           </button>
         </div>

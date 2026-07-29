@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Megaphone, Send, Trash2, Users, Eye, EyeOff } from "lucide-react";
+import { Megaphone, Send, Trash2, Users, Eye, EyeOff, RotateCw, Check } from "lucide-react";
 import Modal from "@/components/Modal";
 import UserAvatar from "@/components/UserAvatar";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -31,7 +31,7 @@ export default function AnnouncementComposer({ open, onClose }) {
       supabase
         .from("announcements")
         .select(
-          "id, title, body, active, created_at, announcement_recipients(user_id, seen_count, last_seen_at)"
+          "id, title, body, active, created_at, announcement_recipients(user_id, seen_count, last_seen_at, acknowledged_at)"
         )
         .order("created_at", { ascending: false })
         .limit(20),
@@ -42,8 +42,23 @@ export default function AnnouncementComposer({ open, onClose }) {
   }, [supabase, user]);
 
   useEffect(() => {
-    if (open) load();
-  }, [open, load]);
+    if (!open) return;
+    load();
+
+    // read receipts land while the dialog is open
+    const channel = supabase
+      .channel("announcement_receipts")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "announcement_recipients" },
+        () => load()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, load, supabase]);
 
   const profileMap = useMemo(
     () => Object.fromEntries(members.map((m) => [m.id, m])),
@@ -98,6 +113,20 @@ export default function AnnouncementComposer({ open, onClose }) {
       .eq("id", row.id);
     if (error) return showToast(error.message, "error");
     showToast(row.active ? "Announcement stopped" : "Announcement re-activated");
+    load();
+  };
+
+  const resend = async (row) => {
+    const { error } = await supabase
+      .from("announcement_recipients")
+      .update({ acknowledged_at: null })
+      .eq("announcement_id", row.id);
+    if (error) return showToast(error.message, "error");
+
+    if (!row.active) {
+      await supabase.from("announcements").update({ active: true }).eq("id", row.id);
+    }
+    showToast("Resent — it pops up for those members again");
     load();
   };
 
@@ -193,7 +222,8 @@ export default function AnnouncementComposer({ open, onClose }) {
               </button>
             </div>
             <p className="text-xs text-slate-500">
-              Selected members see this popup every time they log in, until you stop it below.
+              Members see this popup until they click “Okay, got it”. Use Resend below to make it
+              pop up again — it reaches them live, no reload needed.
             </p>
           </form>
 
@@ -207,7 +237,7 @@ export default function AnnouncementComposer({ open, onClose }) {
               <ul className="space-y-3">
                 {sent.map((a) => {
                   const recips = a.announcement_recipients || [];
-                  const seen = recips.filter((r) => r.seen_count > 0);
+                  const read = recips.filter((r) => r.acknowledged_at);
                   return (
                     <li
                       key={a.id}
@@ -231,23 +261,42 @@ export default function AnnouncementComposer({ open, onClose }) {
                           </p>
                           <p className="mt-1 line-clamp-2 text-slate-600">{a.body}</p>
                           <p className="mt-1.5 text-xs text-slate-400">
-                            {timeAgo(a.created_at)} · {recips.length} recipient
-                            {recips.length !== 1 ? "s" : ""} · {seen.length} seen
+                            {timeAgo(a.created_at)} · {read.length} of {recips.length} read
                           </p>
                           {recips.length > 0 && (
-                            <p className="mt-1 text-xs text-slate-500">
-                              {recips
-                                .map(
-                                  (r) =>
-                                    `${getDisplayName(profileMap[r.user_id]) || "Member"}${
-                                      r.seen_count > 0 ? ` ✓${r.seen_count}` : " — not seen"
-                                    }`
-                                )
-                                .join(" · ")}
-                            </p>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {recips.map((r) => (
+                                <span
+                                  key={r.user_id}
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                                    r.acknowledged_at
+                                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                                      : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                  )}
+                                  title={
+                                    r.acknowledged_at
+                                      ? `Read ${timeAgo(r.acknowledged_at)}`
+                                      : "Waiting for them to confirm"
+                                  }
+                                >
+                                  {r.acknowledged_at && <Check className="h-3 w-3" />}
+                                  {getDisplayName(profileMap[r.user_id]) || "Member"}
+                                  {r.acknowledged_at ? "" : " · pending"}
+                                </span>
+                              ))}
+                            </div>
                           )}
                         </div>
                         <div className="flex shrink-0 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => resend(a)}
+                            title="Resend — show this popup again to everyone"
+                            className="rounded-lg p-2 text-indigo-600 hover:bg-indigo-50"
+                          >
+                            <RotateCw className="h-4 w-4" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => toggleActive(a)}

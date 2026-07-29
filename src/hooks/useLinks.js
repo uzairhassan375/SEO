@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export function useLinks(serviceFilter, typeFilter) {
   const { isAdmin, user } = useAuth();
   const [links, setLinks] = useState([]);
+  const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
@@ -20,8 +21,14 @@ export function useLinks(serviceFilter, typeFilter) {
     }
     if (typeFilter === "guest_post") query = query.eq("type", "guest_post");
     if (typeFilter === "backlink") query = query.eq("type", "backlink");
-    const { data, error } = await query;
+
+    const [{ data, error }, { data: profData }] = await Promise.all([
+      query,
+      supabase.from("profiles").select("id, full_name, email, avatar_url"),
+    ]);
+
     if (!error) setLinks(data || []);
+    setProfiles(profData || []);
     setLoading(false);
   }, [supabase, isAdmin, user, serviceFilter, typeFilter]);
 
@@ -29,5 +36,5 @@ export function useLinks(serviceFilter, typeFilter) {
     fetchLinks();
   }, [fetchLinks]);
 
-  return { links, loading, refetch: fetchLinks, setLinks };
+  return { links, profiles, loading, refetch: fetchLinks, setLinks };
 }

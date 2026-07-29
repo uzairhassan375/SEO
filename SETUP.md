@@ -49,10 +49,20 @@ Redeploy after saving. Without these, `npm run build` fails during page generati
 | Page | When | Who | What you do |
 |------|------|-----|-------------|
 | **Dashboard** | Any day | Everyone | See live totals — no form to fill |
-| **Weekly Report** | End of each week | Members submit; admin reviews | Enter backlinks, blogs, KW improved, etc. for that week |
+| **Weekly Report** | End of each week | Members submit; admin reviews | Numbers are filled in automatically from the member's own work — review, add notes, submit |
 | **Monthly Report** | End of month | Admin only | Enter month-end totals per service + comments; export PDF |
 
-**Weekly:** One report per service per week. Members fill their service; admin checks the 3 service cards and “Team submissions” table.
+**Weekly:** One report per service per week. A member's numbers are derived from what they logged in the app for that week (`useWeeklyMetrics`), not typed in:
+
+| Metric | Source |
+|---|---|
+| Backlinks added | `backlinks` they added that week, type `backlink` |
+| Guest posts | `backlinks` they added that week, type `guest_post` |
+| Blogs published | their `blogs` at status published/live dated in that week |
+| Keywords improved | `activity_log` keyword updates that week where the rank got better |
+| On-page fixes | `page_rankings` rows they entered for that week |
+
+Only Notes are typed. Admin still has the manual "Add / edit report" form to correct a service report.
 
 **Monthly:** Admin enters rolled-up numbers (may differ from dashboard). Member table shows app activity that month, not weekly form data.
 
@@ -60,7 +70,9 @@ Redeploy after saving. Without these, `npm run build` fails during page generati
 
 Schema and RLS are applied via Supabase. Tables: `profiles`, `keywords`, `page_rankings`, `backlinks`, `blogs`, `weekly_reports`, `monthly_reports`, `activity_log`, `announcements`, `announcement_recipients`.
 
-**Announcements:** admin-only "Announce" button in the top bar. Pick members, write a description, send. Each selected member gets it as a popup on every login while the announcement is `active`; admin can stop or delete it from the same dialog. Apply `supabase/migrations/20260729120000_announcements.sql` before using it.
+**Admin user management:** Settings → Team Management lists every user. Admins can set a user's password and delete a user. Both go through `/api/admin/users`, which verifies the caller is an admin and then uses the Supabase Admin API — so `SUPABASE_SERVICE_ROLE_KEY` must be set in `.env` locally and in the Vercel project env vars (Project Settings → API → `service_role` secret). Never expose that key to the browser. The primary admin (`admin@zambeel.com`) cannot be deleted, and nobody can delete their own account.
+
+**Announcements:** admin-only "Announce" button in the top bar. Pick members, write a description, send. Each selected member gets it as a popup that keeps appearing until they click "Okay, got it" — which marks it read, and the admin sees a green ✓ chip with their name in the same dialog (live). **Resend** clears everyone's acknowledgement so it pops up again, pushed live over realtime — no reload or re-login needed. The eye toggle stops it entirely; the bin deletes it. Apply `supabase/migrations/20260729120000_announcements.sql` and `20260729130000_announcement_acknowledge.sql` before using it.
 
 > The Tasks feature was removed from the UI. The `tasks` table is still in the database (untouched) but nothing reads or writes it.
 

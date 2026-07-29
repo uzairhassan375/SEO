@@ -9,18 +9,18 @@ import Modal from "@/components/Modal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
 import FilterBar from "@/components/FilterBar";
-import { ServiceBadge, StatusBadge } from "@/components/Badge";
-import { SERVICES, SERVICE_LABELS } from "@/lib/constants";
+import UserAvatar from "@/components/UserAvatar";
+import { ServiceBadge } from "@/components/Badge";
+import { SERVICES, SERVICE_LABELS, DEFAULT_TARGET_URL } from "@/lib/constants";
 import { logActivity } from "@/lib/activity";
 import { createClient } from "@/lib/supabase/client";
+import { getDisplayName } from "@/lib/utils";
 
 const emptyForm = {
   source_url: "",
-  target_url: "",
+  target_url: DEFAULT_TARGET_URL,
   service: "dropshipping",
   type: "backlink",
-  dr_score: "",
-  status: "pending",
   notes: "",
 };
 
@@ -33,19 +33,19 @@ export default function LinksPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
 
-  const { links, loading, refetch } = useLinks(serviceTab, typeTab);
+  const { links, profiles, loading, refetch } = useLinks(serviceTab, typeTab);
   const supabase = createClient();
 
-  const counts = useMemo(() => ({
-    live: links.filter((l) => l.status === "live").length,
-    pending: links.filter((l) => l.status === "pending").length,
-    rejected: links.filter((l) => l.status === "rejected").length,
-  }), [links]);
+  const profileMap = useMemo(
+    () => Object.fromEntries(profiles.map((p) => [p.id, p])),
+    [profiles]
+  );
 
   const openAdd = () => {
     setEditing(null);
     setForm({
       ...emptyForm,
+      target_url: DEFAULT_TARGET_URL,
       service: isAdmin ? "dropshipping" : profile?.assigned_service || "dropshipping",
     });
     setModalOpen(true);
@@ -62,8 +62,8 @@ export default function LinksPage() {
       target_url: form.target_url,
       service: form.service,
       type: form.type,
-      dr_score: form.dr_score === "" ? null : Number(form.dr_score),
-      status: form.status,
+      // status is no longer shown/edited in the UI; keep the column populated
+      status: editing?.status || "pending",
       notes: form.notes,
       added_by: user.id,
       date_added: new Date().toISOString().slice(0, 10),
@@ -80,8 +80,6 @@ export default function LinksPage() {
         entityId: editing.id,
         entityName: form.source_url,
         service: payload.service,
-        oldValue: editing.status,
-        newValue: payload.status,
       });
       showToast("Link updated");
     } else {
@@ -128,21 +126,6 @@ export default function LinksPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2 text-sm">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 ring-1 ring-emerald-200">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          {counts.live} live
-        </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-700 ring-1 ring-amber-200">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-          {counts.pending} pending
-        </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700 ring-1 ring-rose-200">
-          <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-          {counts.rejected} rejected
-        </span>
-      </div>
-
       <FilterBar
         filters={[
           {
@@ -182,8 +165,7 @@ export default function LinksPage() {
                 <th className="px-4 py-3">Target</th>
                 <th className="px-4 py-3">Service</th>
                 <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">DR</th>
-                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Added by</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
@@ -199,14 +181,18 @@ export default function LinksPage() {
                   <td className="max-w-[180px] truncate px-4 py-3">{l.target_url}</td>
                   <td className="px-4 py-3"><ServiceBadge service={l.service} /></td>
                   <td className="px-4 py-3 capitalize">{l.type.replace("_", " ")}</td>
-                  <td className="px-4 py-3">{l.dr_score ?? "—"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={l.status} /></td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <UserAvatar profile={profileMap[l.added_by]} size="xs" />
+                      <span className="font-medium">{getDisplayName(profileMap[l.added_by])}</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">{l.date_added || "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       {(isAdmin || l.added_by === user.id) && (
                         <>
-                          <button type="button" onClick={() => { setEditing(l); setForm({ ...l, dr_score: l.dr_score ?? "" }); setModalOpen(true); }} className="text-slate-500">
+                          <button type="button" onClick={() => { setEditing(l); setForm({ ...l }); setModalOpen(true); }} className="text-slate-500">
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button type="button" onClick={() => remove(l)} className="text-red-500">
@@ -231,7 +217,10 @@ export default function LinksPage() {
           </div>
           <div className="sm:col-span-2">
             <label className="mb-1 block text-sm font-medium">Target URL *</label>
-            <input required value={form.target_url} onChange={(e) => setForm({ ...form, target_url: e.target.value })} className="w-full" />
+            <input required value={form.target_url} onChange={(e) => setForm({ ...form, target_url: e.target.value })} className="w-full" placeholder={DEFAULT_TARGET_URL} />
+            <p className="mt-1 text-xs text-slate-500">
+              Pre-filled with {DEFAULT_TARGET_URL} — change it if the link points to a different page.
+            </p>
           </div>
           {isAdmin && (
             <div>
@@ -246,18 +235,6 @@ export default function LinksPage() {
             <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full">
               <option value="backlink">Backlink</option>
               <option value="guest_post">Guest Post</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">DR Score</label>
-            <input type="number" value={form.dr_score} onChange={(e) => setForm({ ...form, dr_score: e.target.value })} className="w-full" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">Status</label>
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full">
-              <option value="live">Live</option>
-              <option value="pending">Pending</option>
-              <option value="rejected">Rejected</option>
             </select>
           </div>
           <div className="sm:col-span-2">
