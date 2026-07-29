@@ -74,7 +74,7 @@ export default function SettingsPage() {
     const { error } = await supabase.from("profiles").update({ [field]: value }).eq("id", id);
     if (error) return showToast(error.message, "error");
     setUsers((u) => u.map((x) => (x.id === id ? { ...x, [field]: value } : x)));
-    if (field === "email" && value === "admin@zambeel.com") {
+    if (field === "email" && value === ADMIN_EMAIL) {
       await supabase.from("profiles").update({ role: "admin" }).eq("id", id);
     }
     showToast("User updated");
@@ -158,7 +158,7 @@ export default function SettingsPage() {
                       <label className="text-xs font-medium text-slate-500">Role</label>
                       <select
                         value={u.role}
-                        disabled={u.email === "admin@zambeel.com"}
+                        disabled={u.email === ADMIN_EMAIL}
                         onChange={(e) => updateUser(u.id, "role", e.target.value)}
                         className="mt-1 w-full"
                       >
@@ -187,7 +187,15 @@ export default function SettingsPage() {
                       </select>
                     </div>
                   </div>
-                  <div className="flex shrink-0 gap-2 lg:flex-col xl:flex-row">
+                  {/* mirrors a field cell (label + control) so the buttons line up with the inputs */}
+                  <div className="shrink-0">
+                    <span
+                      aria-hidden
+                      className="hidden text-xs font-medium text-slate-500 sm:block"
+                    >
+                      Actions
+                    </span>
+                    <div className="flex gap-2 sm:mt-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -195,7 +203,7 @@ export default function SettingsPage() {
                         setPassword("");
                         setConfirmPassword("");
                       }}
-                      className="btn-secondary flex items-center gap-2 text-xs"
+                      className="btn-secondary flex h-[38px] items-center gap-2 py-0 text-sm"
                     >
                       <KeyRound className="h-4 w-4" /> Password
                     </button>
@@ -210,10 +218,11 @@ export default function SettingsPage() {
                             ? "You cannot delete your own account"
                             : "Delete user"
                       }
-                      className="flex items-center gap-2 rounded-lg border border-rose-200 px-4 py-2 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex h-[38px] items-center gap-2 rounded-lg border border-rose-200 px-4 text-sm font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Trash2 className="h-4 w-4" /> Delete
                     </button>
+                    </div>
                   </div>
                 </div>
               ))}

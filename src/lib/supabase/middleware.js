@@ -56,7 +56,7 @@ export async function updateSession(request) {
       .single();
 
     const isAdmin =
-      profile?.role === "admin" || profile?.email === "admin@zambeel.com";
+      profile?.role === "admin" || profile?.email === "admin@uzair.com";
     if (!isAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";

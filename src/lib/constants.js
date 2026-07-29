@@ -41,7 +41,7 @@ export const BLOG_STATUSES = ["draft", "writing", "published", "live"];
 /** Default target for backlinks / guest posts — the site we build links to. */
 export const DEFAULT_TARGET_URL = "https://www.myzambeel.com/";
 
-export const ADMIN_EMAIL = "admin@zambeel.com";
+export const ADMIN_EMAIL = "admin@uzair.com";
 
 export function isAdminProfile(profile) {
   return (

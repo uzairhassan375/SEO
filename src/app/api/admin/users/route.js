@@ -92,13 +92,31 @@ export async function DELETE(request) {
     return NextResponse.json({ error: "The primary admin cannot be deleted" }, { status: 403 });
   }
 
+  // Release every reference to this user first. Without ON DELETE rules on the
+  // owner columns, GoTrue answers "Database error deleting user".
+  // (20260729140000_user_delete_constraints.sql makes this automatic; these
+  // statements keep the delete working even if that migration hasn't run yet.)
+  const detach = [
+    admin.from("keywords").update({ added_by: null }).eq("added_by", userId),
+    admin.from("backlinks").update({ added_by: null }).eq("added_by", userId),
+    admin.from("blogs").update({ created_by: null }).eq("created_by", userId),
+    admin.from("page_rankings").update({ created_by: null }).eq("created_by", userId),
+    admin.from("weekly_reports").update({ created_by: null }).eq("created_by", userId),
+    admin.from("activity_log").update({ user_id: null }).eq("user_id", userId),
+    admin.from("announcements").update({ created_by: null }).eq("created_by", userId),
+    admin.from("announcement_recipients").delete().eq("user_id", userId),
+  ];
+  await Promise.allSettled(detach);
+
+  await admin.from("profiles").delete().eq("id", userId);
+
   const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
   if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 400 });
+    const hint = /database error/i.test(deleteError.message)
+      ? " — a table still references this user. Apply supabase/migrations/20260729140000_user_delete_constraints.sql."
+      : "";
+    return NextResponse.json({ error: `${deleteError.message}${hint}` }, { status: 400 });
   }
-
-  // profiles.id may not cascade from auth.users — remove it explicitly
-  await admin.from("profiles").delete().eq("id", userId);
 
   return NextResponse.json({ ok: true });
 }

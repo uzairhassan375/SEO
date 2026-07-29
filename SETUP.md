@@ -10,7 +10,7 @@ In **Supabase Dashboard → Authentication → Users**, create 3 users:
 
 | Email | Role | Assigned service |
 |-------|------|------------------|
-| admin@zambeel.com | admin | — |
+| admin@uzair.com | admin | — |
 | member1@zambeel.com | member | dropshipping |
 | member2@zambeel.com | member | 3pl |
 
@@ -22,7 +22,7 @@ Profiles are auto-created on signup. Then in **Table Editor → profiles**, set:
 - `assigned_service`: `dropshipping`, `3pl`, or `360`
 - `full_name`: display name
 
-**Note:** `admin@zambeel.com` is always treated as admin in the app.
+**Note:** `admin@uzair.com` is always treated as admin in the app.
 
 ## 3. Run locally
 
@@ -70,7 +70,9 @@ Only Notes are typed. Admin still has the manual "Add / edit report" form to cor
 
 Schema and RLS are applied via Supabase. Tables: `profiles`, `keywords`, `page_rankings`, `backlinks`, `blogs`, `weekly_reports`, `monthly_reports`, `activity_log`, `announcements`, `announcement_recipients`.
 
-**Admin user management:** Settings → Team Management lists every user. Admins can set a user's password and delete a user. Both go through `/api/admin/users`, which verifies the caller is an admin and then uses the Supabase Admin API — so `SUPABASE_SERVICE_ROLE_KEY` must be set in `.env` locally and in the Vercel project env vars (Project Settings → API → `service_role` secret). Never expose that key to the browser. The primary admin (`admin@zambeel.com`) cannot be deleted, and nobody can delete their own account.
+**Admin user management:** Settings → Team Management lists every user. Admins can set a user's password and delete a user. Both go through `/api/admin/users`, which verifies the caller is an admin and then uses the Supabase Admin API — so `SUPABASE_SERVICE_ROLE_KEY` must be set in `.env` locally and in the Vercel project env vars (Project Settings → API → `service_role` secret). Never expose that key to the browser. The primary admin (`admin@uzair.com`) cannot be deleted, and nobody can delete their own account.
+
+If deleting a user returns **"Database error deleting user"**, rows still reference that auth user. Apply `supabase/migrations/20260729140000_user_delete_constraints.sql`: it sets `profiles.id → auth.users` to `ON DELETE CASCADE` and every owner column (`added_by`, `created_by`, `user_id`) to `ON DELETE SET NULL`, so a deleted member's keywords, links, blogs and reports stay in the history without an owner instead of blocking the delete.
 
 **Announcements:** admin-only "Announce" button in the top bar. Pick members, write a description, send. Each selected member gets it as a popup that keeps appearing until they click "Okay, got it" — which marks it read, and the admin sees a green ✓ chip with their name in the same dialog (live). **Resend** clears everyone's acknowledgement so it pops up again, pushed live over realtime — no reload or re-login needed. The eye toggle stops it entirely; the bin deletes it. Apply `supabase/migrations/20260729120000_announcements.sql` and `20260729130000_announcement_acknowledge.sql` before using it.
 

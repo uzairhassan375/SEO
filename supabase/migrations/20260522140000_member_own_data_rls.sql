@@ -1,4 +1,14 @@
 -- Members: own rows only. Admin: all rows.
+--
+-- Supersedes the broad owner-or-admin policies from the baseline schema; those
+-- are permissive, so they must be dropped or they would OR around the stricter
+-- service-scoped rules below.
+DROP POLICY IF EXISTS keywords_all ON public.keywords;
+DROP POLICY IF EXISTS backlinks_all ON public.backlinks;
+DROP POLICY IF EXISTS page_rankings_all ON public.page_rankings;
+DROP POLICY IF EXISTS blogs_all ON public.blogs;
+DROP POLICY IF EXISTS weekly_reports_all ON public.weekly_reports;
+DROP POLICY IF EXISTS monthly_reports_all ON public.monthly_reports;
 
 -- keywords (owner: added_by)
 DROP POLICY IF EXISTS keywords_select ON public.keywords;
@@ -99,17 +109,24 @@ CREATE POLICY weekly_reports_update ON public.weekly_reports
 
 -- weekly_reports_insert, weekly_reports_delete, weekly_reports_delete_own unchanged
 
--- tasks: members see/update only tasks assigned to them
-DROP POLICY IF EXISTS tasks_select ON public.tasks;
-DROP POLICY IF EXISTS tasks_update ON public.tasks;
+-- tasks: members see/update only tasks assigned to them.
+-- The Tasks feature was later removed, so a fresh project has no tasks table —
+-- skip this block instead of failing the migration.
+DO $$
+BEGIN
+  IF to_regclass('public.tasks') IS NOT NULL THEN
+    DROP POLICY IF EXISTS tasks_select ON public.tasks;
+    DROP POLICY IF EXISTS tasks_update ON public.tasks;
 
-CREATE POLICY tasks_select ON public.tasks
-  FOR SELECT TO authenticated
-  USING (is_admin() OR assigned_to = auth.uid());
+    CREATE POLICY tasks_select ON public.tasks
+      FOR SELECT TO authenticated
+      USING (is_admin() OR assigned_to = auth.uid());
 
-CREATE POLICY tasks_update ON public.tasks
-  FOR UPDATE TO authenticated
-  USING (is_admin() OR assigned_to = auth.uid());
+    CREATE POLICY tasks_update ON public.tasks
+      FOR UPDATE TO authenticated
+      USING (is_admin() OR assigned_to = auth.uid());
+  END IF;
+END $$;
 
 -- monthly_reports: admin only for members (read/write)
 DROP POLICY IF EXISTS monthly_reports_select ON public.monthly_reports;
