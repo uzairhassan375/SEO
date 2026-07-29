@@ -2,6 +2,7 @@
 
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
+import AnnouncementPopup from "./AnnouncementPopup";
 import LoadingSpinner from "./LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { MobileNavProvider, useMobileNav } from "@/contexts/MobileNavContext";
@@ -51,6 +52,7 @@ function AppLayoutShell({ children }) {
         <Navbar />
         <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+      <AnnouncementPopup />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 :root {
   --navy: #1e3a5f;
+  --accent: #4f46e5; /* indigo-600 — active filters, focus rings, primary actions */
   --background: #f8fafc;
   --foreground: #0f172a;
 }
@@ -40,11 +41,11 @@ body {
 
 input,
 textarea {
-  @apply rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f];
+  @apply rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30;
 }
 
 select {
-  @apply cursor-pointer rounded-lg border border-slate-300 py-2 pl-3 pr-9 text-sm text-slate-900 outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f];
+  @apply cursor-pointer rounded-lg border border-slate-300 py-2 pl-3 pr-9 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -55,17 +56,27 @@ select {
   background-size: 1rem;
 }
 
+/* Active filter select — must be unlayered to win over the base `select` rule above */
+select.select-active {
+  background-color: #eef2ff;
+  border-color: #6366f1;
+  color: #4338ca;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px #6366f1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234338ca' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 /* Search fields with a left icon — global px-3 would overlap the icon otherwise */
 input.input-search {
   padding-left: 2.75rem !important;
 }
 
 .btn-primary {
-  @apply rounded-lg bg-[#1e3a5f] px-4 py-2 text-sm font-medium text-white hover:bg-[#2a4a73] disabled:opacity-50;
+  @apply rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:opacity-50;
 }
 
 .btn-secondary {
-  @apply rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50;
+  @apply rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50;
 }
 
 .table-row-hover tbody tr:hover {

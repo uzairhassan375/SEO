@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ImageUp, ExternalLink } from "lucide-react";
 import { useBlogs } from "@/hooks/useBlogs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -9,6 +9,7 @@ import Modal from "@/components/Modal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
 import StatCard from "@/components/StatCard";
+import FilterBar from "@/components/FilterBar";
 import { ServiceBadge, StatusBadge } from "@/components/Badge";
 import UserAvatar from "@/components/UserAvatar";
 import { SERVICES, SERVICE_LABELS, BLOG_STATUSES, isAdminProfile } from "@/lib/constants";
@@ -47,8 +48,6 @@ export default function BlogsPage() {
     () => Object.fromEntries(profiles.map((p) => [p.id, p])),
     [profiles]
   );
-
-  const serviceTabs = ["all", ...SERVICES];
 
   const origins = useMemo(() => {
     const set = new Set();
@@ -100,6 +99,69 @@ export default function BlogsPage() {
     });
     return { total: filteredBlogs.length, published, totalWords, byAuthor };
   }, [filteredBlogs, profileMap]);
+
+  const filters = useMemo(
+    () => [
+      {
+        id: "blog-service-filter",
+        label: "Service",
+        value: serviceTab,
+        onChange: setServiceTab,
+        options: [
+          { value: "all", label: "All services" },
+          ...SERVICES.map((s) => ({ value: s, label: SERVICE_LABELS[s] })),
+        ],
+      },
+      {
+        id: "blog-status-filter",
+        label: "Status",
+        value: statusTab,
+        onChange: setStatusTab,
+        options: [
+          { value: "all", label: "All statuses" },
+          ...BLOG_STATUSES.map((s) => ({
+            value: s,
+            label: s.charAt(0).toUpperCase() + s.slice(1),
+          })),
+        ],
+      },
+      {
+        id: "blog-origin-filter",
+        label: "Origin country",
+        value: activeOriginFilter,
+        onChange: setOriginFilter,
+        options: [
+          { value: "all", label: "All origins" },
+          ...origins.map((c) => ({ value: c, label: c })),
+        ],
+      },
+      {
+        id: "blog-target-filter",
+        label: "Target country",
+        value: activeTargetFilter,
+        onChange: setTargetFilter,
+        options: [
+          { value: "all", label: "All targets" },
+          ...targets.map((c) => ({ value: c, label: c })),
+        ],
+      },
+    ],
+    [serviceTab, statusTab, activeOriginFilter, activeTargetFilter, origins, targets]
+  );
+
+  const statusCounts = useMemo(() => {
+    const styles = {
+      live: { style: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200", dot: "bg-emerald-500" },
+      published: { style: "bg-amber-50 text-amber-700 ring-1 ring-amber-200", dot: "bg-amber-500" },
+      writing: { style: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200", dot: "bg-indigo-500" },
+      draft: { style: "bg-slate-100 text-slate-600 ring-1 ring-slate-200", dot: "bg-slate-400" },
+    };
+    return ["live", "published", "writing", "draft"].map((key) => ({
+      key,
+      count: filteredBlogs.filter((b) => b.status === key).length,
+      ...styles[key],
+    }));
+  }, [filteredBlogs]);
 
   const openAdd = () => {
     setEditing(null);
@@ -248,9 +310,20 @@ export default function BlogsPage() {
               : "Log blogs you write — pick the service, keyword, origin/target country, and status."}
           </p>
         </div>
-        <button type="button" onClick={openAdd} className="btn-primary flex items-center gap-2">
-          <Plus className="h-4 w-4" /> Add Blog
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="https://zambeel-shopify-images.vercel.app/"
+            target="_blank"
+            rel="noreferrer"
+            className="btn-secondary flex items-center gap-2"
+          >
+            <ImageUp className="h-4 w-4" /> Upload Images
+            <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+          </a>
+          <button type="button" onClick={openAdd} className="btn-primary flex items-center gap-2">
+            <Plus className="h-4 w-4" /> Add Blog
+          </button>
+        </div>
       </div>
 
       {isAdmin && (
@@ -259,27 +332,26 @@ export default function BlogsPage() {
             <StatCard label="Total blogs" value={stats.total} />
             <StatCard label="Published / Live" value={stats.published} />
             <StatCard label="Total words" value={stats.totalWords.toLocaleString()} />
-            <StatCard
-              label="Contributors"
-              value={Object.keys(stats.byAuthor).length}
-              sub={Object.entries(stats.byAuthor)
-                .map(([n, c]) => `${n}: ${c}`)
-                .join(" · ")}
-            />
+            <StatCard label="Contributors" value={Object.keys(stats.byAuthor).length} />
           </div>
 
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">Posts by team member</h3>
-            <div className="flex flex-wrap gap-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Posts by team member
+            </h3>
+            <div className="flex flex-wrap gap-2">
               {Object.entries(stats.byAuthor).length === 0 ? (
                 <p className="text-sm text-slate-500">No blogs yet.</p>
               ) : (
                 Object.entries(stats.byAuthor).map(([name, count]) => (
                   <span
                     key={name}
-                    className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-800"
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-50 py-1 pl-3 pr-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200"
                   >
-                    {name}: {count} blog{count !== 1 ? "s" : ""}
+                    {name}
+                    <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-bold text-white">
+                      {count}
+                    </span>
                   </span>
                 ))
               )}
@@ -288,95 +360,20 @@ export default function BlogsPage() {
         </>
       )}
 
-      <div className="flex flex-wrap gap-4 text-sm">
-        <span className="rounded-lg bg-emerald-100 px-3 py-1 font-medium text-emerald-800">
-          {filteredBlogs.filter((b) => b.status === "live").length} live
-        </span>
-        <span className="rounded-lg bg-amber-100 px-3 py-1 font-medium text-amber-800">
-          {filteredBlogs.filter((b) => b.status === "published").length} published
-        </span>
-        <span className="rounded-lg bg-blue-100 px-3 py-1 font-medium text-blue-800">
-          {filteredBlogs.filter((b) => b.status === "writing").length} writing
-        </span>
-        <span className="rounded-lg bg-slate-100 px-3 py-1 font-medium text-slate-700">
-          {filteredBlogs.filter((b) => b.status === "draft").length} draft
-        </span>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {serviceTabs.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setServiceTab(t)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${
-              serviceTab === t ? "bg-[#1e3a5f] text-white" : "bg-white ring-1 ring-slate-200"
-            }`}
+      <div className="flex flex-wrap gap-2 text-sm">
+        {statusCounts.map((s) => (
+          <span
+            key={s.key}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold ${s.style}`}
           >
-            {t === "all" ? "All services" : SERVICE_LABELS[t]}
-          </button>
+            <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+            {s.count} {s.key}
+          </span>
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {["all", ...BLOG_STATUSES].map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setStatusTab(t)}
-            className={`rounded-lg px-3 py-1.5 text-sm capitalize ${
-              statusTab === t ? "bg-[#1e3a5f] text-white" : "bg-white ring-1 ring-slate-200"
-            }`}
-          >
-            {t === "all" ? "All statuses" : t}
-          </button>
-        ))}
-      </div>
+      <FilterBar filters={filters} />
 
-      {(origins.length > 0 || targets.length > 0) && (
-        <div className="flex flex-wrap items-center gap-3">
-          {origins.length > 0 && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="blog-origin-filter" className="text-sm font-medium text-slate-600">
-                Origin
-              </label>
-              <select
-                id="blog-origin-filter"
-                value={activeOriginFilter}
-                onChange={(e) => setOriginFilter(e.target.value)}
-                className="min-w-[140px] text-sm"
-              >
-                <option value="all">All origins</option>
-                {origins.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {targets.length > 0 && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="blog-target-filter" className="text-sm font-medium text-slate-600">
-                Target
-              </label>
-              <select
-                id="blog-target-filter"
-                value={activeTargetFilter}
-                onChange={(e) => setTargetFilter(e.target.value)}
-                className="min-w-[140px] text-sm"
-              >
-                <option value="all">All targets</option>
-                {targets.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      )}
 
       {loading ? (
         <LoadingSpinner />

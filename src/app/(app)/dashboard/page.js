@@ -6,7 +6,6 @@ import {
   Search,
   TrendingUp,
   Link2,
-  ListTodo,
   BookOpen,
   FileText,
   ArrowRight,
@@ -25,11 +24,10 @@ const emptyStats = () => ({
   top10: 0,
   liveBacklinks: 0,
   totalBlogs: 0,
-  pendingTasks: 0,
   byService: Object.fromEntries(
     SERVICES.map((s) => [
       s,
-      { keywords: 0, top10: 0, live: 0, blogs: 0, pending: 0 },
+      { keywords: 0, top10: 0, live: 0, blogs: 0 },
     ])
   ),
 });
@@ -93,7 +91,6 @@ export default function DashboardPage() {
 
       let kwQ = supabase.from("keywords").select("id, current_rank, service");
       let blQ = supabase.from("backlinks").select("id, status, service");
-      let tkQ = supabase.from("tasks").select("id, status, service, assigned_to");
       let blogQ = supabase.from("blogs").select("id, status, service, created_by");
 
       if (serviceFilter) {
@@ -106,10 +103,6 @@ export default function DashboardPage() {
         kwQ = kwQ.eq("added_by", user.id);
         blQ = blQ.eq("added_by", user.id);
         blogQ = blogQ.eq("created_by", user.id);
-      }
-
-      if (!isAdmin) {
-        tkQ = tkQ.eq("assigned_to", user.id);
       }
 
       let actQ = supabase
@@ -142,10 +135,9 @@ export default function DashboardPage() {
         );
       }
 
-      const [kw, bl, tk, blogsRes, act, profs, ...memberExtra] = await Promise.all([
+      const [kw, bl, blogsRes, act, profs, ...memberExtra] = await Promise.all([
         kwQ,
         blQ,
-        tkQ,
         blogQ,
         actQ,
         profileQ,
@@ -154,7 +146,6 @@ export default function DashboardPage() {
 
       const keywords = kw.data || [];
       const backlinks = bl.data || [];
-      const tasks = tk.data || [];
       const blogs = blogsRes.data || [];
 
       setStats({
@@ -162,7 +153,6 @@ export default function DashboardPage() {
         top10: keywords.filter((k) => isTop10Rank(k.current_rank)).length,
         liveBacklinks: backlinks.filter((b) => b.status === "live").length,
         totalBlogs: blogs.length,
-        pendingTasks: tasks.filter((t) => t.status !== "done").length,
         byService: Object.fromEntries(
           SERVICES.map((s) => [
             s,
@@ -171,7 +161,6 @@ export default function DashboardPage() {
               top10: keywords.filter((k) => k.service === s && isTop10Rank(k.current_rank)).length,
               live: backlinks.filter((b) => b.service === s && b.status === "live").length,
               blogs: blogs.filter((b) => b.service === s).length,
-              pending: tasks.filter((t) => t.service === s && t.status !== "done").length,
             },
           ])
         ),
@@ -242,7 +231,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-slate-900">My Dashboard</h1>
           <p className="mt-1 text-slate-500">
             Live analytics for <strong>{SERVICE_LABELS[svc]}</strong> — your keywords, links,
-            tasks, and blogs. This is not your weekly/monthly report; use{" "}
+            and blogs. This is not your weekly/monthly report; use{" "}
             <Link href="/weekly-report" className="text-[#1e3a5f] underline">
               Weekly Report
             </Link>{" "}
@@ -254,7 +243,7 @@ export default function DashboardPage() {
           <StatCard label="Service keywords" value={stats?.totalKeywords ?? 0} icon={Search} />
           <StatCard label="Top 10 ranks" value={stats?.top10 ?? 0} icon={TrendingUp} />
           <StatCard label="Live backlinks" value={stats?.liveBacklinks ?? 0} icon={Link2} />
-          <StatCard label="My pending tasks" value={stats?.pendingTasks ?? 0} icon={ListTodo} />
+          <StatCard label="My blogs" value={myBlogStats.total} icon={BookOpen} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -279,10 +268,6 @@ export default function DashboardPage() {
                 <dt className="text-slate-500">Live backlinks</dt>
                 <dd className="font-semibold">{stats?.liveBacklinks ?? 0}</dd>
               </div>
-              <div className="flex justify-between border-b border-slate-100 pb-2">
-                <dt className="text-slate-500">Tasks assigned to you</dt>
-                <dd className="font-semibold">{stats?.pendingTasks ?? 0} pending</dd>
-              </div>
               <div className="flex justify-between">
                 <dt className="text-slate-500">Weekly report (this week)</dt>
                 <dd className="font-semibold">
@@ -298,14 +283,11 @@ export default function DashboardPage() {
               <Link href="/keywords" className="btn-secondary text-xs">
                 Keywords
               </Link>
-              <Link href="/pages" className="btn-secondary text-xs">
-                Pages
-              </Link>
               <Link href="/links" className="btn-secondary text-xs">
                 Links
               </Link>
-              <Link href="/tasks" className="btn-secondary text-xs">
-                Tasks
+              <Link href="/blogs" className="btn-secondary text-xs">
+                Blogs
               </Link>
             </div>
           </div>
@@ -395,12 +377,11 @@ export default function DashboardPage() {
         <p className="text-slate-500">Overall performance across all services</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Keywords" value={stats?.totalKeywords ?? 0} icon={Search} />
         <StatCard label="Ranking Top 10" value={stats?.top10 ?? 0} icon={TrendingUp} />
         <StatCard label="Live Backlinks" value={stats?.liveBacklinks ?? 0} icon={Link2} />
         <StatCard label="Total Blogs" value={stats?.totalBlogs ?? 0} icon={BookOpen} />
-        <StatCard label="Pending Tasks" value={stats?.pendingTasks ?? 0} icon={ListTodo} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -429,10 +410,6 @@ export default function DashboardPage() {
               <div className="flex justify-between">
                 <dt className="text-slate-500">Total blogs</dt>
                 <dd className="font-medium">{stats?.byService[s]?.blogs ?? 0}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-500">Pending tasks</dt>
-                <dd className="font-medium">{stats?.byService[s]?.pending ?? 0}</dd>
               </div>
             </dl>
           </div>

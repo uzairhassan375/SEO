@@ -91,7 +91,6 @@ export default function MonthlyReportPage() {
           keywords: userActs.filter((a) => a.action.includes("keyword")).length,
           links: userActs.filter((a) => a.action.includes("link")).length,
           blogs: userActs.filter((a) => a.action.includes("blog")).length,
-          tasks: userActs.filter((a) => a.action.includes("task")).length,
           total: userActs.length,
         };
       });
@@ -381,7 +380,6 @@ export default function MonthlyReportPage() {
                   <th className="px-4 py-3 text-center">Keywords</th>
                   <th className="px-4 py-3 text-center">Links</th>
                   <th className="px-4 py-3 text-center">Blogs</th>
-                  <th className="px-4 py-3 text-center">Tasks</th>
                   <th className="px-4 py-3 text-center">Total actions</th>
                 </tr>
               </thead>
@@ -395,7 +393,6 @@ export default function MonthlyReportPage() {
                     <td className="px-4 py-3 text-center">{m.keywords}</td>
                     <td className="px-4 py-3 text-center">{m.links}</td>
                     <td className="px-4 py-3 text-center">{m.blogs}</td>
-                    <td className="px-4 py-3 text-center">{m.tasks}</td>
                     <td className="px-4 py-3 text-center font-semibold">{m.total}</td>
                   </tr>
                 ))}

@@ -58,7 +58,11 @@ Redeploy after saving. Without these, `npm run build` fails during page generati
 
 ## 6. Database
 
-Schema and RLS are applied via Supabase. Tables: `profiles`, `keywords`, `page_rankings`, `backlinks`, `tasks`, `blogs`, `weekly_reports`, `monthly_reports`, `activity_log`.
+Schema and RLS are applied via Supabase. Tables: `profiles`, `keywords`, `page_rankings`, `backlinks`, `blogs`, `weekly_reports`, `monthly_reports`, `activity_log`, `announcements`, `announcement_recipients`.
+
+**Announcements:** admin-only "Announce" button in the top bar. Pick members, write a description, send. Each selected member gets it as a popup on every login while the announcement is `active`; admin can stop or delete it from the same dialog. Apply `supabase/migrations/20260729120000_announcements.sql` before using it.
+
+> The Tasks feature was removed from the UI. The `tasks` table is still in the database (untouched) but nothing reads or writes it.
 
 **Keywords:** `rank_week1`–`rank_week4`, matching `impressions_week1`–`impressions_week4`, plus `current_rank`.
 

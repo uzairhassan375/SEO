@@ -50,7 +50,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-3xl font-bold sm:text-4xl">Zambeel SEO</h1>
           <p className="mt-3 text-base text-white/70 sm:text-lg">
-            Manage keywords, backlinks, tasks, and reports across Dropshipping,
+            Manage keywords, backlinks, blogs, and reports across Dropshipping,
             3PL, and 360 services.
           </p>
         </div>

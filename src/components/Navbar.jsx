@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Menu } from "lucide-react";
+import { useState } from "react";
+import { LogOut, Menu, Megaphone } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMobileNav } from "@/contexts/MobileNavContext";
+import AnnouncementComposer from "./AnnouncementComposer";
 import UserAvatar from "./UserAvatar";
 import { getDisplayName } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export default function Navbar() {
-  const { profile, signOut } = useAuth();
+  const { profile, isAdmin, signOut } = useAuth();
   const { toggle, collapsed } = useMobileNav();
+  const [composerOpen, setComposerOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 lg:h-16 lg:gap-0 lg:px-8">
@@ -34,6 +37,17 @@ export default function Navbar() {
         </Link>
       </div>
       <div className="flex shrink-0 items-center gap-2 lg:gap-3">
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setComposerOpen(true)}
+            className="flex h-10 items-center gap-2 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700"
+            title="Send announcement"
+          >
+            <Megaphone className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Announce</span>
+          </button>
+        )}
         <Link
           href="/settings"
           className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-slate-50 lg:gap-3"
@@ -53,6 +67,10 @@ export default function Navbar() {
           <span className="hidden sm:inline">Logout</span>
         </button>
       </div>
+
+      {isAdmin && (
+        <AnnouncementComposer open={composerOpen} onClose={() => setComposerOpen(false)} />
+      )}
     </header>
   );
 }

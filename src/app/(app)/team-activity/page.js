@@ -10,14 +10,13 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { SERVICES, SERVICE_LABELS } from "@/lib/constants";
 import { timeAgo, getWeekNumber, getDisplayName } from "@/lib/utils";
 
-const ACTION_TYPES = ["keyword", "page", "backlink", "blog", "task", "report"];
+const ACTION_TYPES = ["keyword", "page", "backlink", "blog", "report"];
 
 const ACTION_FILTER_LABELS = {
   keyword: "Keywords",
   page: "Pages",
   backlink: "Backlinks",
   blog: "Blogs",
-  task: "Tasks",
   report: "Reports",
 };
 
@@ -61,7 +60,6 @@ function TeamActivityContent() {
         if (actionFilter === "keyword" && !type.includes("keyword")) return false;
         if (actionFilter === "page" && type !== "page") return false;
         if (actionFilter === "backlink" && type !== "backlink") return false;
-        if (actionFilter === "task" && type !== "task") return false;
         if (actionFilter === "blog" && type !== "blog") return false;
         if (actionFilter === "report" && type !== "report") return false;
       }
@@ -78,7 +76,6 @@ function TeamActivityContent() {
       const acts = activity.filter(
         (a) => a.user_id === m.id && new Date(a.created_at) >= weekStart
       );
-      const tasksDone = acts.filter((a) => a.action === "completed_task").length;
       return {
         ...m,
         keywordsUpdated: acts.filter((a) => a.action.includes("keyword")).length,
@@ -88,7 +85,6 @@ function TeamActivityContent() {
         blogsUpdated: acts.filter(
           (a) => a.entity_type === "blog" && a.action !== "added_blog"
         ).length,
-        tasksCompleted: tasksDone,
         lastActive: activity.find((a) => a.user_id === m.id)?.created_at,
       };
     });
@@ -100,7 +96,6 @@ function TeamActivityContent() {
     { key: "backlinksAdded", label: "Backlinks added" },
     { key: "blogsAdded", label: "Blogs added" },
     { key: "blogsUpdated", label: "Blog updates" },
-    { key: "tasksCompleted", label: "Tasks completed" },
   ];
 
   const statusDot = (last) => {
@@ -233,7 +228,6 @@ function TeamActivityContent() {
                 <div className="flex justify-between"><dt>Backlinks added</dt><dd className="font-medium">{m.backlinksAdded}</dd></div>
                 <div className="flex justify-between"><dt>Blogs added</dt><dd className="font-medium">{m.blogsAdded}</dd></div>
                 <div className="flex justify-between"><dt>Blog updates</dt><dd className="font-medium">{m.blogsUpdated}</dd></div>
-                <div className="flex justify-between"><dt>Tasks completed</dt><dd className="font-medium">{m.tasksCompleted}</dd></div>
               </dl>
               <p className="mt-3 text-xs text-slate-400">
                 Last active: {m.lastActive ? timeAgo(m.lastActive) : "No activity"}
@@ -241,7 +235,7 @@ function TeamActivityContent() {
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
                 <div
                   className="h-full bg-emerald-500"
-                  style={{ width: `${Math.min(100, (m.tasksCompleted / Math.max(m.tasksCompleted, 5)) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (m.blogsAdded / Math.max(m.blogsAdded, 5)) * 100)}%` }}
                 />
               </div>
             </div>

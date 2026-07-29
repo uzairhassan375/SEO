@@ -7,10 +7,8 @@ import {
   LayoutDashboard,
   Search,
   Link2,
-  ListTodo,
   FileText,
   BookOpen,
-  FileBarChart,
   BarChart3,
   Settings,
   Activity,
@@ -26,18 +24,32 @@ import ZambeelLogo from "@/components/ZambeelLogo";
 import { getDisplayName } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/keywords", label: "Keywords", icon: Search },
-  { href: "/pages", label: "Pages", icon: FileBarChart },
-  { href: "/links", label: "Links", icon: Link2 },
-  { href: "/blogs", label: "Blogs", icon: BookOpen },
-  { href: "/tasks", label: "Tasks", icon: ListTodo },
-  { href: "/important-info", label: "Important Info", icon: Megaphone, needsPost: true },
-  { href: "/weekly-report", label: "Weekly Report", icon: FileText },
-  { href: "/monthly-report", label: "Monthly Report", icon: BarChart3, adminOnly: true },
-  { href: "/team-activity", label: "Team Activity", icon: Activity, adminOnly: true },
-  { href: "/settings", label: "Settings", icon: Settings },
+const navGroups = [
+  {
+    section: null,
+    items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    section: "SEO Work",
+    items: [
+      { href: "/keywords", label: "Keywords", icon: Search },
+      { href: "/links", label: "Links", icon: Link2 },
+      { href: "/blogs", label: "Blogs", icon: BookOpen },
+    ],
+  },
+  {
+    section: "Reports",
+    items: [
+      { href: "/weekly-report", label: "Weekly Report", icon: FileText },
+      { href: "/monthly-report", label: "Monthly Report", icon: BarChart3, adminOnly: true },
+      { href: "/team-activity", label: "Team Activity", icon: Activity, adminOnly: true },
+      { href: "/important-info", label: "Important Info", icon: Megaphone, needsPost: true },
+    ],
+  },
+  {
+    section: null,
+    items: [{ href: "/settings", label: "Settings", icon: Settings }],
+  },
 ];
 
 export default function Sidebar() {
@@ -80,11 +92,16 @@ export default function Sidebar() {
     };
   }, [isAdmin, supabase]);
 
-  const visibleNav = nav.filter((item) => {
-    if (item.adminOnly && !isAdmin) return false;
-    if (item.needsPost && !isAdmin && !hasPublishedPosts) return false;
-    return true;
-  });
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (item.adminOnly && !isAdmin) return false;
+        if (item.needsPost && !isAdmin && !hasPublishedPosts) return false;
+        return true;
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const showLabels = !collapsed;
 
@@ -154,30 +171,49 @@ export default function Sidebar() {
         </button>
       </div>
 
-      <nav className="sidebar-scroll flex-1 min-h-0 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4 lg:px-2">
-        {visibleNav.map((item) => {
-          const active = pathname === item.href;
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={close}
-              title={collapsed ? item.label : undefined}
-              aria-label={collapsed ? item.label : undefined}
-              className={cn(
-                "flex items-center rounded-lg py-2.5 text-sm font-medium transition",
-                showLabels ? "gap-3 px-3" : "lg:justify-center lg:px-0 lg:py-3 px-3 gap-3",
-                active
-                  ? "bg-white/15 text-white"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
-              )}
-            >
-              <Icon className="h-5 w-5 shrink-0" />
-              <span className={cn("truncate", collapsed && "lg:hidden")}>{item.label}</span>
-            </Link>
-          );
-        })}
+      <nav className="sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 py-4 lg:px-2">
+        {visibleGroups.map((group, i) => (
+          <div key={group.section ?? `group-${i}`} className={cn(i > 0 && "mt-4")}>
+            {group.section && (
+              <p
+                className={cn(
+                  "px-3 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-wider text-white/40",
+                  collapsed && "lg:hidden"
+                )}
+              >
+                {group.section}
+              </p>
+            )}
+            {collapsed && group.section && i > 0 && (
+              <div className="mx-3 mb-2 hidden border-t border-white/10 lg:block" />
+            )}
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const active = pathname === item.href;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={close}
+                    title={collapsed ? item.label : undefined}
+                    aria-label={collapsed ? item.label : undefined}
+                    className={cn(
+                      "relative flex items-center rounded-lg py-2.5 text-sm font-medium transition",
+                      showLabels ? "gap-3 px-3" : "lg:justify-center lg:px-0 lg:py-3 px-3 gap-3",
+                      active
+                        ? "bg-indigo-500 text-white shadow-sm shadow-indigo-900/40"
+                        : "text-white/70 hover:bg-white/10 hover:text-white"
+                    )}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span className={cn("truncate", collapsed && "lg:hidden")}>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="shrink-0 border-t border-white/10 p-2 lg:p-2">

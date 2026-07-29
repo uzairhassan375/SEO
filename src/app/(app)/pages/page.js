@@ -9,6 +9,7 @@ import Modal from "@/components/Modal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
 import StatCard from "@/components/StatCard";
+import FilterBar from "@/components/FilterBar";
 import { ServiceBadge } from "@/components/Badge";
 import { SERVICES, SERVICE_LABELS } from "@/lib/constants";
 import { logActivity } from "@/lib/activity";
@@ -210,71 +211,52 @@ export default function PagesPage() {
         <StatCard label="Avg CTR" value={stats.ctr} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {serviceTabs.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setServiceTab(t)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              serviceTab === t
-                ? "bg-[#1e3a5f] text-white"
-                : "bg-white text-slate-600 ring-1 ring-slate-200"
-            }`}
-          >
-            {t === "all" ? "All services" : SERVICE_LABELS[t]}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label htmlFor="year-filter" className="text-sm font-medium text-slate-600">
-            Year
-          </label>
-          <select
-            id="year-filter"
-            value={yearTab}
-            onChange={(e) => setYearTab(e.target.value)}
-            className="text-sm"
-          >
-            <option value="all">All years</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={String(y)}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="week-filter" className="text-sm font-medium text-slate-600">
-            Week
-          </label>
-          <select
-            id="week-filter"
-            value={weekTab}
-            onChange={(e) => setWeekTab(e.target.value)}
-            className="text-sm"
-          >
-            <option value="all">All weeks</option>
-            {weekOptions.map((w) => (
-              <option key={w} value={String(w)}>
-                Week {w}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="relative max-w-md flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            className="input-search w-full"
-            placeholder="Search page URLs…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-      </div>
+      <FilterBar
+        search={
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              className="input-search w-full"
+              placeholder="Search page URLs…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        }
+        filters={[
+          {
+            id: "page-service-filter",
+            label: "Service",
+            value: serviceTab,
+            onChange: setServiceTab,
+            options: serviceTabs.map((t) => ({
+              value: t,
+              label: t === "all" ? "All services" : SERVICE_LABELS[t],
+            })),
+          },
+          {
+            id: "year-filter",
+            label: "Year",
+            value: yearTab,
+            onChange: setYearTab,
+            options: [
+              { value: "all", label: "All years" },
+              ...yearOptions.map((y) => ({ value: String(y), label: String(y) })),
+            ],
+          },
+          {
+            id: "week-filter",
+            label: "Week",
+            value: weekTab,
+            onChange: setWeekTab,
+            options: [
+              { value: "all", label: "All weeks" },
+              ...weekOptions.map((w) => ({ value: String(w), label: `Week ${w}` })),
+            ],
+          },
+        ]}
+      />
 
       {loading ? (
         <LoadingSpinner />

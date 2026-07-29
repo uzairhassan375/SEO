@@ -8,6 +8,7 @@ import { useToast } from "@/contexts/ToastContext";
 import Modal from "@/components/Modal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
+import FilterBar from "@/components/FilterBar";
 import { ServiceBadge, StatusBadge } from "@/components/Badge";
 import { SERVICES, SERVICE_LABELS } from "@/lib/constants";
 import { logActivity } from "@/lib/activity";
@@ -127,47 +128,46 @@ export default function LinksPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-4 text-sm">
-        <span className="rounded-lg bg-emerald-100 px-3 py-1 font-medium text-emerald-800">
+      <div className="flex flex-wrap gap-2 text-sm">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 ring-1 ring-emerald-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           {counts.live} live
         </span>
-        <span className="rounded-lg bg-amber-100 px-3 py-1 font-medium text-amber-800">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-700 ring-1 ring-amber-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
           {counts.pending} pending
         </span>
-        <span className="rounded-lg bg-red-100 px-3 py-1 font-medium text-red-800">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700 ring-1 ring-rose-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
           {counts.rejected} rejected
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {["all", "backlink", "guest_post"].map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTypeTab(t)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${
-              typeTab === t ? "bg-[#1e3a5f] text-white" : "bg-white ring-1 ring-slate-200"
-            }`}
-          >
-            {t === "all" ? "All types" : t === "guest_post" ? "Guest Posts" : "Backlinks"}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {serviceTabs.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setServiceTab(t)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${
-              serviceTab === t ? "bg-[#1e3a5f] text-white" : "bg-white ring-1 ring-slate-200"
-            }`}
-          >
-            {t === "all" ? "All services" : SERVICE_LABELS[t]}
-          </button>
-        ))}
-      </div>
+      <FilterBar
+        filters={[
+          {
+            id: "link-type-filter",
+            label: "Type",
+            value: typeTab,
+            onChange: setTypeTab,
+            options: [
+              { value: "all", label: "All types" },
+              { value: "backlink", label: "Backlinks" },
+              { value: "guest_post", label: "Guest Posts" },
+            ],
+          },
+          {
+            id: "link-service-filter",
+            label: "Service",
+            value: serviceTab,
+            onChange: setServiceTab,
+            options: serviceTabs.map((t) => ({
+              value: t,
+              label: t === "all" ? "All services" : SERVICE_LABELS[t],
+            })),
+          },
+        ]}
+      />
 
       {loading ? (
         <LoadingSpinner />

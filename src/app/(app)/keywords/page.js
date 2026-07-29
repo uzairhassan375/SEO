@@ -8,6 +8,7 @@ import { useToast } from "@/contexts/ToastContext";
 import Modal from "@/components/Modal";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
+import FilterBar from "@/components/FilterBar";
 import { ServiceBadge } from "@/components/Badge";
 import { SERVICES, SERVICE_LABELS } from "@/lib/constants";
 import { logActivity } from "@/lib/activity";
@@ -229,75 +230,56 @@ export default function KeywordsPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => {
-              setTab(t);
+      <FilterBar
+        search={
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              className="input-search w-full"
+              placeholder="Search keywords…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        }
+        filters={[
+          {
+            id: "keyword-service-filter",
+            label: "Service",
+            value: tab,
+            onChange: (v) => {
+              setTab(v);
               setOriginFilter("all");
               setTargetFilter("all");
-            }}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              tab === t
-                ? "bg-[#1e3a5f] text-white"
-                : "bg-white text-slate-600 ring-1 ring-slate-200"
-            }`}
-          >
-            {t === "all" ? "All" : SERVICE_LABELS[t]}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-md flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            className="input-search w-full"
-            placeholder="Search keywords…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="origin-filter" className="text-sm font-medium text-slate-600">
-            Origin
-          </label>
-          <select
-            id="origin-filter"
-            value={activeOriginFilter}
-            onChange={(e) => setOriginFilter(e.target.value)}
-            className="min-w-[140px] text-sm"
-          >
-            <option value="all">All origins</option>
-            {origins.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="target-filter" className="text-sm font-medium text-slate-600">
-            Target
-          </label>
-          <select
-            id="target-filter"
-            value={activeTargetFilter}
-            onChange={(e) => setTargetFilter(e.target.value)}
-            className="min-w-[140px] text-sm"
-          >
-            <option value="all">All targets</option>
-            {targets.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+            },
+            options: tabs.map((t) => ({
+              value: t,
+              label: t === "all" ? "All services" : SERVICE_LABELS[t],
+            })),
+          },
+          {
+            id: "origin-filter",
+            label: "Origin country",
+            value: activeOriginFilter,
+            onChange: setOriginFilter,
+            options: [
+              { value: "all", label: "All origins" },
+              ...origins.map((c) => ({ value: c, label: c })),
+            ],
+          },
+          {
+            id: "target-filter",
+            label: "Target country",
+            value: activeTargetFilter,
+            onChange: setTargetFilter,
+            options: [
+              { value: "all", label: "All targets" },
+              ...targets.map((c) => ({ value: c, label: c })),
+            ],
+          },
+        ]}
+      />
 
       {loading ? (
         <LoadingSpinner />

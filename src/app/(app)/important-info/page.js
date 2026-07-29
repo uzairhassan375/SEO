@@ -277,7 +277,7 @@ export default function ImportantInfoPage() {
             onChange={(e) => setBulletText(e.target.value)}
             rows={8}
             className="w-full font-mono text-sm"
-            placeholder={"Update all Week 4 keyword ranks by Monday\nSubmit 2 guest post URLs for 3PL\nComplete blocked tasks before Friday"}
+            placeholder={"Update all Week 4 keyword ranks by Monday\nSubmit 2 guest post URLs for 3PL\nPublish the pending 360 blog before Friday"}
           />
           <button
             type="button"
